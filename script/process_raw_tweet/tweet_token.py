@@ -2,6 +2,8 @@ import codecs, json, time
 from create_vocab import VocabBuilder
 from word_generator import *
 
+from tqdm import tqdm
+
 substitute = [('CUSTOM_URL', ' ;; '), ('CUSTOM_UNKNOWN', ' [[ '), ('CUSTOM_NUMBER', ' ]] '), ('CUSTOM_MASK', ' {{ '), ('CUSTOM_BREAK', ' }} '), ('CUSTOM_AT', ' ,, ')]
 
 emoji_unicodes = json.loads(open("emoji_unicode", "r").read())
@@ -14,9 +16,9 @@ def check_ascii(word):
         return False
 
 #please modify these three field for preprocessing the tweets
-input_file = "elsa_fr_raw"
-output_file = "elsa_fr_processed"
-emoji_file = "elsa_fr_top_emoji"
+input_file = "./elsa_ja_raw"
+output_file = "./elsa_ja_processed"
+emoji_file = "./elsa_ja_top_emoji"
 
 emoji_frequency = {x:0 for x in emoji_unicode}
 cur_tokens = []
@@ -29,7 +31,7 @@ with codecs.open(input_file+'.tsv', 'rU') as stream:
     vb = VocabBuilder(wg)
 
     numbers, emoji_number, emoji_senten = 0, 0, 0
-    for i, (tokens, info) in enumerate(wg):
+    for i, (tokens, info) in tqdm(enumerate(wg)):
         numbers += 1
         emoji_en_senten = 0
         for item in tokens:

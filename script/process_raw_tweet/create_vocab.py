@@ -10,8 +10,10 @@ import re, sys
 from filter_utils import is_special_token
 from word_generator import WordGenerator
 from collections import defaultdict, OrderedDict
-from global_variables import SPECIAL_TOKENS, VOCAB_PATH
+#from global_variables import SPECIAL_TOKENS, VOCAB_PATH
 from copy import deepcopy
+
+VOCAB_PATH = '/data/elsa/vocab'
 
 class VocabBuilder():
     """ Create vocabulary with words extracted from sentences as fed from a
@@ -22,9 +24,9 @@ class VocabBuilder():
         self.word_counts = defaultdict(lambda: 0, {})
         self.word_length_limit=30
 
-        for token in SPECIAL_TOKENS:
-            assert len(token) < self.word_length_limit
-            self.word_counts[token] = 0
+#        for token in SPECIAL_TOKENS:
+#            assert len(token) < self.word_length_limit
+#            self.word_counts[token] = 0
         self.word_gen = word_gen
 
     def count_words_in_sentence(self, words):

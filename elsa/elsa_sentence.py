@@ -6,14 +6,14 @@ from keras.layers.merge import concatenate
 from keras.layers import Input, Bidirectional, Embedding, Dense, Dropout, SpatialDropout1D, LSTM, Activation
 from keras.regularizers import L1L2 
 from attlayer import AttentionWeightedAverage
-from avglayer import MaskAverage
-from global_variables import NB_TOKENS, NB_EMOJI_CLASSES
+#from avglayer import MaskAverage
+#from global_variables import NB_TOKENS, NB_EMOJI_CLASSES
 from copy import deepcopy
 from os.path import exists
 import h5py
 import uuid, os
 from keras.optimizers import Adam
-from finetuning import (sampling_generator, finetuning_callbacks)
+#from finetuning import (sampling_generator, finetuning_callbacks)
 import yaml
 
 def elsa_architecture(nb_classes, nb_tokens, maxlen, feature_output=False, embed_dropout_rate=0, final_dropout_rate=0, embed_dim=300,
@@ -127,8 +127,8 @@ if __name__ == '__main__':
 
     steps = int(epoch_size/batch_size)
 
-    word_vec = np.load(vocab_path + "%s_wv.npy" % cur_lan)
-    input_vec, input_label = np.load(vocab_path + "%s_input.npy" % cur_lan), np.load(vocab_path + "%s_labels.npy" % cur_lan)
+    word_vec = np.load(vocab_path + "%s_wv.npy" % cur_lan, allow_pickle=True)
+    input_vec, input_label = np.load(vocab_path + "%s_input.npy" % cur_lan, allow_pickle=True), np.load(vocab_path + "%s_labels.npy" % cur_lan, allow_pickle=True)
     nb_tokens, input_len = len(word_vec), len(input_label)
 
     #please modify the checkpoint_weight_path
@@ -156,9 +156,11 @@ if __name__ == '__main__':
         model.compile(loss=loss, optimizer=adam, metrics=['accuracy'])
     elif optim == 'rmsprop':
         model.compile(loss=loss, optimizer='rmsprop', metrics=['accuracy'])
-    callbacks = finetuning_callbacks(checkpoint_weight_path, patience, verbose=1)
+    #callbacks = finetuning_callbacks(checkpoint_weight_path, patience, verbose=1)
+    callbacks = [keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0, patience=patience, verbose=0, mode='auto')]
     for i in range(2):
         train_gen = sampling_generator(X_train, y_train, batch_size, upsample=False, epoch_size=epoch_size)
-        model.fit_generator(train_gen, steps_per_epoch=steps, epochs=nb_epochs,validation_data=(X_val, y_val),validation_steps=steps, callbacks=callbacks, verbose=True)
+        model.fit(X_train, y_train, batch_size=batch_size, epochs=nb_epochs, validation_data=(X_val, y_val), callbacks=callbacks, verbose=True)
+        #model.fit_generator(train_gen, steps_per_epoch=steps, epochs=nb_epochs,validation_data=(X_val, y_val),validation_steps=steps, callbacks=callbacks, verbose=True)
     _, acc = model.evaluate(X_test, y_test, batch_size=batch_size, verbose=0)
     print(acc)

@@ -26,6 +26,8 @@ from filter_utils import (
     separate_emojis_and_text)
 import MeCab
 JAPAN = True
+if JAPAN:
+    mecab = MeCab.Tagger('-Owakati')
 # Only catch retweets in the beginning of the tweet as those are the
 # automatically added ones.
 # We do not want to remove tweets like "Omg.. please RT this!!"
@@ -65,8 +67,8 @@ class WordGenerator():
             that is not allowed.
         """
 
-        if not isinstance(sentence, unicode):
-            raise ValueError("All sentences should be Unicode-encoded!")
+        #if not isinstance(sentence, unicode):
+        #    raise ValueError("All sentences should be Unicode-encoded!")
         sentence = sentence.strip().lower()
 
         if self.break_replacement:
@@ -79,8 +81,8 @@ class WordGenerator():
         # Unicode. This is done to prevent word splitting issues with
         # twokenize and Unicode
         words = sentence.split()
-        if True:
-        # if not JAPAN:
+        #if True:
+        if not JAPAN:
             converted_words = []
             for w in words:
                 accept_sentence, c_w = self.convert_unicode_word(w)
@@ -291,30 +293,35 @@ class TweetWordGenerator(WordGenerator):
         return True, uniq_emojis
 
     def data_preprocess_filtering(self, line, iter_i):
-        fields = line.strip().split("\t")
-        valid, emojis = self.validated_tweet(fields)
+        #fields = line.strip().split("\t")
+        text = line.strip() 
+        valid, emojis = self.validated_tweet(text)
         #japanese stored as the unicode-escape
-        mecab = MeCab.Tagger('-Owakati')
+        text = MENTION_RE.sub('', text)
+        text = RETWEETS_RE.sub('', text)
+        text = URLS_RE.sub('', text)
+        text = text.strip()
         try:
             if JAPAN:
-                re_url = re.compile(ur'(?:https?://|www\.)(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+')
-                re_at = re.compile(ur'@[a-zA-Z0-9_]+')
-                start = text.find("https")
-                if start != -1:
-                    text = text[:at_start].encode('utf-8')+mecab.parse(text[at_start:start].encode('utf-8'))+text[start:].encode('utf-8')
-                else:
-                    text = mecab.parse(text.encode('utf-8'))
+                #re_url = re.compile(r'(?:https?://|www\.)(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+')
+                #re_at = re.compile(r'@[a-zA-Z0-9_]+')
+                #start = text.find("https")
+                #if start != -1:
+                #    text = text[:at_start].encode('utf-8')+mecab.parse(text[at_start:start].encode('utf-8'))+text[start:].encode('utf-8')
+                #else:
+                #    text = mecab.parse(text.encode('utf-8'))
+                text = mecab.parse(text)
                 # print("wori", at_start, text)
-                text = text.decode('utf-8')
+                #text = text.decode('utf-8')
             else:
-                text = fields[2].decode('unicode-escape') \
-                        .replace(u'\\n', u'') \
-                        .replace(u'\\r', u'') \
-                        .replace(u'&amp', u'&') if valid else ''
+                text = text.decode('unicode-escape') \
+                        .replace('\\n', '') \
+                        .replace('\\r', '') \
+                        .replace('&amp', '&') if valid else ''
         except:
-            text = fields[2].replace(u'\\n', u'') \
-                        .replace(u'\\r', u'') \
-                        .replace(u'&amp', u'&') if valid else ''
+            text = text.replace('\\n', '') \
+                        .replace('\\r', '') \
+                        .replace('&amp', '&') if valid else ''
         return valid, text, {'emojis': emojis}
 
     def data_postprocess_filtering(self, words, iter_i):

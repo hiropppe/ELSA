@@ -1,26 +1,28 @@
 import codecs
 import numpy as np
 import re, json, sys
-reload(sys)
-sys.setdefaultencoding('utf-8')
+#reload(sys)
+#sys.setdefaultencoding('utf-8')
 from collections import defaultdict, OrderedDict
 
 #configure
-cur_lan = "en" # "de" or "fr" or "jp"
-input_file_name = "tmoji_tokens_%s" % cur_lan # precessed tweets after running the scripts in process_raw
-vocab_path = "/storage1/user/ss/vocab/" # path to store the numpy version of processed training and testing tweets
-pre_vocab_file = vocab_path + "en_vocab.json"
+cur_lan = "jp" # "de" or "fr" or "jp"
+#input_file_name = "tmoji_tokens_%s" % cur_lan # precessed tweets after running the scripts in process_raw
+input_file_name = '../process_raw_tweet/elsa_ja_top_emoji'
+file_name = ['../process_raw_tweet/elsa_ja_processed']
+vocab_path = "/data/elsa/vocab/" # path to store the numpy version of processed training and testing tweets
+pre_vocab_file = vocab_path + "jp_vocab.json"
 top_num = 64
 #end configure
 
 emoji = defaultdict(lambda: 0, {})
 with open(input_file_name, "r") as stream:
     for line in stream:
-        word = line.split('\t')[0]
+        word, num = line.split('\t')
         try:
-            emoji[word] += file_name[f]
+            emoji[word] += int(num)
         except KeyError:
-            emoji[word] = file_name[f]
+            emoji[word] = int(num)
     stream.close()
 
 sorted_emoji = sorted(emoji.items(), key=lambda x: x[1], reverse=True)
@@ -42,15 +44,19 @@ with open(vocab_path + "want_tmoji_%s" % cur_lan, "w") as f:
 open("%semoji_%s_top%s.json" % (vocab_path, cur_lan, top_num), "w").write( json.dumps( wanted_emoji  )  )
 
 wanted_emoji = json.loads( open("%semoji_%s_top%s.json" % (vocab_path, cur_lan, top_num),"r").read() )
-emoji_filter = [x.decode('utf-8') for x in wanted_emoji]
+emoji_filter = wanted_emoji
 tidy_data = []
 for f in file_name:
     with open(f, "r") as stream:
         for line in stream:
-            data = line.strip().split("\t")
-            if data[0] in emoji_filter:
-                if len(json.loads(data[1])) > 2:
-                    tidy_data.append((data[0], json.loads(data[1])))
+            #data = line.strip().split("\t")
+            #data = line.strip()
+            data = json.loads(line)
+            #if data in emoji_filter:
+            if any(emoji in data for emoji in emoji_filter):
+                tidy_data.append(data)
+                #if len(json.loads(data[1])) > 2:
+                #    tidy_data.append((data[0], json.loads(data[1])))
 print(wanted_emoji, emoji_filter, len(wanted_emoji), tidy_data[0])
 
 import math
@@ -67,7 +73,8 @@ def calculate_batchsize_maxlen(texts):
         return int(math.ceil(x / 10.0)) * 10
     # Calculate max length of sequences considered
     # Adjust batch_size accordingly to prevent GPU overflow
-    lengths = [len(t) for _, t in texts]
+    #lengths = [len(t) for _, t in texts]
+    lengths = [len(t) for t in texts]
     maxlen = roundup(np.percentile(lengths, 80.0))
     batch_size = 250 if maxlen <= 100 else 50
     print("mean: ", np.mean(lengths), "median: ", np.median(lengths), len(lengths), "avg: ", np.average(lengths))
@@ -91,13 +98,23 @@ infos = []
 tokens = np.zeros((n_sentences, fixed_length), dtype='uint32')
 next_insert = 0
 n_ignored_unknowns = 0
-for s_info, s_words in tidy_data:
+#for s_info, s_words in tidy_data:
+for s_words in tidy_data:
     s_tokens = find_tokens(s_words)
     if len(s_tokens) > fixed_length:
         s_tokens = s_tokens[:fixed_length]
     tokens[next_insert,:len(s_tokens)] = s_tokens
     tmp_info = np.zeros(64)
-    tmp_info[ wanted_emoji.index(s_info) ] = 1
+    for w in s_words:
+        try:
+            e_i = wanted_emoji.index(w)
+            #print(w, e_i)
+            tmp_info[e_i] = 1
+            break
+        except:
+            continue
+         
+    assert tmp_info.sum() == 1
     infos.append(tmp_info)
     next_insert += 1
 del tidy_data

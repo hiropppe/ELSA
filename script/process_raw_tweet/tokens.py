@@ -52,7 +52,7 @@ RE_ABBREVIATIONS = u'\b(?<!\.)(?:[A-Za-z]\.){2,}'
 
 # Twitter-specific patterns
 RE_HASHTAG = u'#[a-zA-Z0-9_]+'
-RE_MENTION = u'@[a-zA-Z0-9_]+'
+RE_MENTION = u'@[a-zA-Z0-9_]+:?'
 
 RE_URL = u'(?:https?://|www\.)(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+'
 RE_EMAIL = u'\b[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+\b'

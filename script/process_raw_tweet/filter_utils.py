@@ -5,8 +5,8 @@ import numpy as np
 import re
 import string
 import emoji
-from tokenizer import RE_MENTION, RE_URL
-from global_variables import SPECIAL_TOKENS
+from tokens import RE_MENTION, RE_URL
+#from global_variables import SPECIAL_TOKENS
 from itertools import groupby
 
 AtMentionRegex = re.compile(RE_MENTION)
@@ -39,13 +39,15 @@ CONTROL_CHAR_REGEX = re.compile('[%s]' % re.escape(CONTROL_CHARS))
 
 
 def is_special_token(word):
+    return False
+    """
     equal = False
     for spec in SPECIAL_TOKENS:
         if word == spec:
             equal = True
             break
     return equal
-
+    """
 
 def mostly_english(words, english, pct_eng_short=0.5, pct_eng_long=0.6, ignore_special_tokens=True, min_length=2):
     """ Ensure text meets threshold for containing English words """
@@ -168,14 +170,14 @@ def shorten_word(word):
 
 
 def detect_special_tokens(word):
-    try:
-        int(word)
-        word = SPECIAL_TOKENS[4]
-    except ValueError:
-        if AtMentionRegex.findall(word):
-            word = SPECIAL_TOKENS[2]
-        elif urlRegex.findall(word):
-            word = SPECIAL_TOKENS[3]
+    #try:
+    #    int(word)
+    #    word = SPECIAL_TOKENS[4]
+    #except ValueError:
+    #    if AtMentionRegex.findall(word):
+    #        word = SPECIAL_TOKENS[2]
+    #    elif urlRegex.findall(word):
+    #        word = SPECIAL_TOKENS[3]
     return word
 
 
@@ -201,6 +203,6 @@ def convert_nonbreaking_space(text):
 def convert_linebreaks(text):
     # ugly hack handling non-breaking space no matter how badly it's been encoded in the input
     # space around to ensure proper tokenization
-    for r in [u'\\\\n', u'\\n', u'\n', u'\\\\r', u'\\r', u'\r', '<br>']:
-        text = text.replace(r, u' ' + SPECIAL_TOKENS[5] + u' ')
+    #for r in [u'\\\\n', u'\\n', u'\n', u'\\\\r', u'\\r', u'\r', '<br>']:
+    #    text = text.replace(r, u' ' + SPECIAL_TOKENS[5] + u' ')
     return text
