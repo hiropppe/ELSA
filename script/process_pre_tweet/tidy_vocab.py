@@ -33,6 +33,7 @@ for word in tmp_vocab:
     except:
         print(word, fail)
         fail += 1
-        word2vec.append( np.random.uniform(-1, 1, 300) )
+        word2vec.append( np.random.uniform(-1, 1, 100) )
+word2vec = np.vstack(word2vec)
 np.save(vocab_path+out_vec, word2vec)
 

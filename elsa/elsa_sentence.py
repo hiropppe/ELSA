@@ -1,5 +1,6 @@
 from __future__ import print_function
 import numpy as np
+import keras
 from keras.layers import *
 from keras.models import Model, Sequential
 from keras.layers.merge import concatenate
@@ -56,6 +57,7 @@ def elsa_architecture(nb_classes, nb_tokens, maxlen, feature_output=False, embed
     # an activation function is used to bound the values of the embedding
     model_input = Input(shape=(maxlen,), dtype='int32')
     embed_reg = L1L2(l2=embed_l2) if embed_l2 != 0 else None
+
     if not load_embedding and pre_embedding is None:
         embed = Embedding(input_dim=nb_tokens, output_dim=embed_dim, mask_zero=True,input_length=maxlen,embeddings_regularizer=embed_reg,
                           name='embedding')
@@ -159,7 +161,7 @@ if __name__ == '__main__':
     #callbacks = finetuning_callbacks(checkpoint_weight_path, patience, verbose=1)
     callbacks = [keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0, patience=patience, verbose=0, mode='auto')]
     for i in range(2):
-        train_gen = sampling_generator(X_train, y_train, batch_size, upsample=False, epoch_size=epoch_size)
+        #train_gen = sampling_generator(X_train, y_train, batch_size, upsample=False, epoch_size=epoch_size)
         model.fit(X_train, y_train, batch_size=batch_size, epochs=nb_epochs, validation_data=(X_val, y_val), callbacks=callbacks, verbose=True)
         #model.fit_generator(train_gen, steps_per_epoch=steps, epochs=nb_epochs,validation_data=(X_val, y_val),validation_steps=steps, callbacks=callbacks, verbose=True)
     _, acc = model.evaluate(X_test, y_test, batch_size=batch_size, verbose=0)
