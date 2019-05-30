@@ -11,18 +11,18 @@ from itertools import groupby
 AtMentionRegex = re.compile(RE_MENTION)
 urlRegex = re.compile(RE_URL)
 
-SPECIAL_TOKENS = {
-    0: "CUSTOM_MASK",
-    1: "CUSTOM_UNKNOWN",
-    2: "CUSTOM_AT",
-    3: "CUSTOM_URL",
-    4: "CUSTOM_NUMBER",
-    5: "CUSTOM_BREAK",
-    6: "CUSTOM_BLANK_6",
-    7: "CUSTOM_BLANK_7",
-    8: "CUSTOM_BLANK_8",
-    9: "CUSTOM_BLANK_9",
-}
+SPECIAL_TOKENS = [
+    "CUSTOM_MASK",
+    "CUSTOM_UNKNOWN",
+    "CUSTOM_AT",
+    "CUSTOM_URL",
+    "CUSTOM_NUMBER",
+    "CUSTOM_BREAK",
+    "CUSTOM_BLANK_6",
+    "CUSTOM_BLANK_7",
+    "CUSTOM_BLANK_8",
+    "CUSTOM_BLANK_9",
+]
 
 # from http://bit.ly/2rdjgjE (UTF-8 encodings and Unicode chars)
 VARIATION_SELECTORS = ['\ufe00',
