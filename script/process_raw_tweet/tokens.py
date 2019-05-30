@@ -16,90 +16,90 @@ Multiple consecutive symbols are also treated as a single token.
 import re
 
 # Basic patterns.
-RE_NUM = u'[0-9]+'
-RE_WORD = u'[a-zA-Z]+'
-RE_WHITESPACE = u'\s+'
-RE_ANY = u'.'
+RE_NUM = '[0-9]+'
+RE_WORD = '[a-zA-Z]+'
+RE_WHITESPACE = '\s+'
+RE_ANY = '.'
 
 # Combined words such as 'red-haired' or 'CUSTOM_TOKEN'
-RE_COMB = u'[a-zA-Z]+[-_][a-zA-Z]+'
+RE_COMB = '[a-zA-Z]+[-_][a-zA-Z]+'
 
 # English-specific patterns
-RE_CONTRACTIONS = RE_WORD + u'\'' + RE_WORD
+RE_CONTRACTIONS = RE_WORD + '\'' + RE_WORD
 
 TITLES = [
-    u'Mr\.',
-    u'Ms\.',
-    u'Mrs\.',
-    u'Dr\.',
-    u'Prof\.',
+    'Mr\.',
+    'Ms\.',
+    'Mrs\.',
+    'Dr\.',
+    'Prof\.',
     ]
 # Ensure case insensitivity
-RE_TITLES = u'|'.join([u'(?i)' + t for t in TITLES])
+RE_TITLES = '|'.join(['(?i)' + t for t in TITLES])
 
 # Symbols have to be created as separate patterns in order to match consecutive
 # identical symbols.
-SYMBOLS = u'()<!?.,/\'\"-_=\\§|´ˇ°[]<>{}~$^&*;:%+\xa3€`'
-RE_SYMBOL = u'|'.join([re.escape(s) + u'+' for s in SYMBOLS])
+SYMBOLS = '()<!?.,/\'\"-_=\\§|´ˇ°[]<>{}~$^&*;:%+\xa3€`'
+RE_SYMBOL = '|'.join([re.escape(s) + '+' for s in SYMBOLS])
 
 # Hash symbols and at symbols have to be defined separately in order to not
 # clash with hashtags and mentions if there are multiple - i.e.
 # ##hello -> ['#', '#hello'] instead of ['##', 'hello']
-SPECIAL_SYMBOLS = u'|#+(?=#[a-zA-Z0-9_]+)|@+(?=@[a-zA-Z0-9_]+)|#+|@+'
+SPECIAL_SYMBOLS = '|#+(?=#[a-zA-Z0-9_]+)|@+(?=@[a-zA-Z0-9_]+)|#+|@+'
 RE_SYMBOL += SPECIAL_SYMBOLS
 
-RE_ABBREVIATIONS = u'\b(?<!\.)(?:[A-Za-z]\.){2,}'
+RE_ABBREVIATIONS = '\b(?<!\.)(?:[A-Za-z]\.){2,}'
 
 # Twitter-specific patterns
-RE_HASHTAG = u'#[a-zA-Z0-9_]+'
-RE_MENTION = u'@[a-zA-Z0-9_]+:?'
+RE_HASHTAG = '#[a-zA-Z0-9_]+'
+RE_MENTION = '@[a-zA-Z0-9_]+:?'
 
-RE_URL = u'(?:https?://|www\.)(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+'
-RE_EMAIL = u'\b[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+\b'
+RE_URL = '(?:https?://|www\.)(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+'
+RE_EMAIL = '\b[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+\b'
 
 # Emoticons and emojis
-RE_HEART = u'(?:<+/?3+)+'
+RE_HEART = '(?:<+/?3+)+'
 EMOTICONS_START = [
-    u'>:',
-    u':',
-    u'=',
-    u';',
+    '>:',
+    ':',
+    '=',
+    ';',
     ]
 EMOTICONS_MID = [
-    u'-',
-    u',',
-    u'^',
-    u'\'',
-    u'\"',
+    '-',
+    ',',
+    '^',
+    '\'',
+    '\"',
     ]
 EMOTICONS_END = [
-    u'D',
-    u'd',
-    u'p',
-    u'P',
-    u'v',
-    u')',
-    u'o',
-    u'O',
-    u'\(',
-    u'3',
-    u'/',
-    u'|',
-    u'\\',
+    'D',
+    'd',
+    'p',
+    'P',
+    'v',
+    ')',
+    'o',
+    'O',
+    '\(',
+    '3',
+    '/',
+    '|',
+    '\\',
     ]
 EMOTICONS_EXTRA = [
-    u'-_-',
-    u'x_x',
-    u'^_^',
-    u'o.o',
-    u'o_o',
-    u'\(:',
-    u'):',
-    u');',
-    u'\(;',
+    '-_-',
+    'x_x',
+    '^_^',
+    'o.o',
+    'o_o',
+    '\(:',
+    '):',
+    ');',
+    '\(;',
     ]
 
-RE_EMOTICON = u'|'.join([re.escape(s) for s in EMOTICONS_EXTRA])
+RE_EMOTICON = '|'.join([re.escape(s) for s in EMOTICONS_EXTRA])
 for s in EMOTICONS_START:
     for m in EMOTICONS_MID:
         for e in EMOTICONS_END:
@@ -135,7 +135,7 @@ IGNORED = [
     ]
 
 # Final pattern
-RE_PATTERN = re.compile(u'|'.join(IGNORED) + u'|(' + u'|'.join(TOKENS) + u')',
+RE_PATTERN = re.compile('|'.join(IGNORED) + '|(' + '|'.join(TOKENS) + ')',
                         re.UNICODE)
 
 

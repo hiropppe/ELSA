@@ -3,12 +3,12 @@ import json
 
 from pathlib import Path
 from collections import Counter
-from create_vocab import VocabBuilder
-from word_generator import TweetWordGenerator
+from word_generator2 import get_default_tokenizer, TweetWordGenerator
 
 from tqdm import tqdm
 
 
+@click.command()
 @click.argument("input_path")
 @click.argument("output_dir")
 @click.option("--lang", "-lang", default="ja", help="")
@@ -16,11 +16,11 @@ def main(input_path, output_dir, lang):
     token_output = Path(output_dir).joinpath('elsa_{:s}_tokens.txt'.format(lang)).as_posix()
     emoji_output = Path(output_dir).joinpath('elsa_{:s}_emoji.txt'.format(lang)).as_posix()
 
-    emoji_unicodes = json.loads(open("./emoji_unicode", "r").read())
-    emoji_unicode = emoji_unicodes.keys()
+    emoji_unicodes = json.loads(open("./emoji_unicode", "r").read()).keys()
 
     with open(input_path, 'r', encoding='utf8') as fi:
-        wg = TweetWordGenerator(fi)
+        tokenizer = get_default_tokenizer(lang)
+        wg = TweetWordGenerator(fi, tokenizer)
 
         n_sents, n_emoji, n_emoji_sents = 0, 0, 0
         emoji_freq = Counter()
@@ -30,7 +30,7 @@ def main(input_path, output_dir, lang):
                 n_sents += 1
                 emoji_sent = 0
                 for token in tokens:
-                    if token in emoji_unicode:
+                    if token in emoji_unicodes:
                         n_emoji += 1
                         emoji_sent = 1
                         emoji_freq[token] += 1

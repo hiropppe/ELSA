@@ -37,3 +37,13 @@ for word in tmp_vocab:
 word2vec = np.vstack(word2vec)
 np.save(vocab_path+out_vec, word2vec)
 
+
+@click.command()
+@click.argument("input_path")
+@click.argument("output_path")
+def main(input_path, output_path):
+
+
+
+if __name__ == '__main__':
+    main()
