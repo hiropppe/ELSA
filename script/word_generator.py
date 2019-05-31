@@ -15,7 +15,7 @@ import stanfordnlp
 
 from text_unidecode import unidecode
 from tokens import RE_MENTION
-from filter_utils2 import (
+from filter_utils import (
     convert_linebreaks,
     convert_nonbreaking_space,
     correct_length,

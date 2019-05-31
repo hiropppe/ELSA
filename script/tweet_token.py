@@ -3,7 +3,7 @@ import json
 
 from pathlib import Path
 from collections import Counter
-from word_generator2 import get_default_tokenizer, TweetWordGenerator
+from word_generator import get_default_tokenizer, TweetWordGenerator
 
 from tqdm import tqdm
 
@@ -18,7 +18,7 @@ def main(input_path, output_dir, lang):
 
     emoji_unicodes = json.loads(open("./emoji_unicode", "r").read()).keys()
 
-    with open(input_path, 'r', encoding='utf8') as fi:
+    with open(input_path, 'r') as fi:
         tokenizer = get_default_tokenizer(lang)
         wg = TweetWordGenerator(fi, tokenizer)
 
@@ -39,9 +39,9 @@ def main(input_path, output_dir, lang):
 
         print(n_sents, n_emoji, n_emoji_sents, float(n_emoji_sents)/n_sents)
 
-    with open(emoji_output, "w", 'utf-8') as foe:
+    with open(emoji_output, "w") as foe:
         for token, freq in emoji_freq.most_common(n=len(emoji_freq)):
-            print("{:s}\t{:s}".format(token, freq), file=foe)
+            print("{:s}\t{:d}".format(token, freq), file=foe)
 
 
 if __name__ == '__main__':

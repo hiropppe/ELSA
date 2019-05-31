@@ -5,6 +5,7 @@ import numpy as np
 
 from pathlib import Path
 from filter_utils import SPECIAL_TOKENS
+from tqdm import tqdm
 
 
 @click.command()
@@ -15,7 +16,7 @@ def main(input_path, output_dir, prefix):
     out_vocab_path = Path(output_dir).joinpath("{:s}_vocab.txt".format(prefix)).as_posix()
     out_vec_path = Path(output_dir).joinpath("{:s}_wv.npy".format(prefix)).as_posix()
 
-    vocab = list(SPECIAL_TOKENS.values())
+    vocab = SPECIAL_TOKENS.copy()
 
     with open(input_path, "r") as fi:
         dim = int(next(fi).split()[1])

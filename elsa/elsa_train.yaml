@@ -1,12 +1,12 @@
-cur_lan : "jp"
-maxlen : 50 # maxlen will be 50 for jp, 30 for en, fr and de
+cur_lan : "elsa_ja"
+maxlen : 60 # maxlen will be 50 for jp, 30 for en, fr and de
 batch_size : 250
 lr : 0.001
 epoch_size : 25000
 nb_epochs : 1000
 patience : 5
 nb_classes : 64
-embed_dim: 50
+embed_dim: 200
 LSTM_hidden : 512
 LSTM_dropout: 0.5
 final_dropout_rate : 0.5
@@ -18,4 +18,4 @@ loss : 'categorical_crossentropy'
 GPU_ID : '0'
 checkpoint_weight_path : './ckpt/'
 optim: 'adam'
-vocab_path : '/data/elsa/vocab/'
+vocab_path : '/data/elsa/'

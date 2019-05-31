@@ -130,7 +130,7 @@ if __name__ == '__main__':
     steps = int(epoch_size/batch_size)
 
     word_vec = np.load(vocab_path + "%s_wv.npy" % cur_lan, allow_pickle=True)
-    input_vec, input_label = np.load(vocab_path + "%s_input.npy" % cur_lan, allow_pickle=True), np.load(vocab_path + "%s_labels.npy" % cur_lan, allow_pickle=True)
+    input_vec, input_label = np.load(vocab_path + "%s_X.npy" % cur_lan, allow_pickle=True), np.load(vocab_path + "%s_y.npy" % cur_lan, allow_pickle=True)
     nb_tokens, input_len = len(word_vec), len(input_label)
 
     #please modify the checkpoint_weight_path
