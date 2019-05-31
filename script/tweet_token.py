@@ -11,7 +11,7 @@ from tqdm import tqdm
 @click.command()
 @click.argument("input_path")
 @click.argument("output_dir")
-@click.option("--lang", "-lang", default="ja", help="")
+@click.option("--lang", "-lang", required=True, help="")
 def main(input_path, output_dir, lang):
     token_output = Path(output_dir).joinpath('elsa_{:s}_tokens.txt'.format(lang)).as_posix()
     emoji_output = Path(output_dir).joinpath('elsa_{:s}_emoji.txt'.format(lang)).as_posix()

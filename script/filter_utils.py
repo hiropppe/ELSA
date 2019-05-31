@@ -195,6 +195,7 @@ def process_word(word):
     """
     word = shorten_word(word)
     word = detect_special_tokens(word)
+    word = word.replace(' ', '_')
     return word
 
 

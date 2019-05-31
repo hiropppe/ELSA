@@ -91,7 +91,7 @@ def get_default_tokenizer(lang, model_dir='/data/stanfordnlp_resources'):
     elif lang in ('ar', 'zh'):
         return StanfordTokenizer(lang, model_dir)
     else:
-        return TweetTokenizer(preserve_case=True, reduce_lan=False, strip_handles=False)
+        return TweetTokenizer(preserve_case=True, reduce_len=True, strip_handles=True)
 
 
 class WordGenerator():
