@@ -13,6 +13,7 @@ import neologdn
 import numpy as np
 import stanfordnlp
 
+from multiprocessing import Pool
 from text_unidecode import unidecode
 from tokens import RE_MENTION
 from filter_utils import (
@@ -27,8 +28,9 @@ from filter_utils import (
     remove_control_chars,
     remove_variation_selectors,
     separate_emojis_and_text)
-
+from functools import partial
 from nltk.tokenize.casual import TweetTokenizer
+from tqdm import tqdm
 
 SPACE_RE = re.compile(r'[\s\u3000]+')
 # Only catch retweets in the beginning of the tweet as those are the
@@ -104,20 +106,25 @@ class WordGenerator():
     unicode_handling in ['ignore_emoji', 'ignore_sentence', 'allow']
     '''
     def __init__(self,
-                 stream,
-                 tokenizer,
+                 file_path,
+                 lang,
                  norm_unicode_text=False,
                  allow_unicode_text=False,
                  ignore_emojis=True,
                  remove_variation_selectors=True,
-                 break_replacement=True):
-        self.stream = stream
-        self.tokenizer = tokenizer
+                 break_replacement=True,
+                 processes=1,
+                 chunksize=100):
+        self.file_path = file_path
+        self.lang = lang
+        self.tokenizer = None
         self.norm_unicode_text = norm_unicode_text
         self.allow_unicode_text = allow_unicode_text
         self.remove_variation_selectors = remove_variation_selectors
         self.ignore_emojis = ignore_emojis
         self.break_replacement = break_replacement
+        self.processes = processes
+        self.chunksize = chunksize
         self.reset_stats()
 
     def get_words(self, sentence):
@@ -135,6 +142,9 @@ class WordGenerator():
 
         if self.remove_variation_selectors:
             sentence = remove_variation_selectors(sentence)
+
+        if self.tokenizer is None:
+            self.tokenizer = get_default_tokenizer(self.lang)
 
         words = self.tokenizer.tokenize(sentence)
         if self.norm_unicode_text:
@@ -279,20 +289,31 @@ class WordGenerator():
                       'valid': 0}
 
     def __iter__(self):
-        if self.stream is None:
+        if self.file_path is None:
             raise ValueError("Stream should be set before iterating over it!")
 
-        for i, line in enumerate(self.stream):
-            valid, words, info = self.extract_valid_sentence_words(line)
-            # print("rnmb", words)
-            # Words may be filtered away due to unidecode etc.
-            # In that case the words should not be passed on.
-            if valid and len(words):
-                self.stats['valid'] += 1
-                yield words, info
+        if self.processes > 1:
+            pool = Pool(self.processes)
+            map_func = partial(pool.imap_unordered, chunksize=self.chunksize)
+        else:
+            pool = None
+            map_func = map
 
-            self.stats['total'] += 1
-            # print("cnmb", words, "\n")
+        try:
+            with open(self.file_path) as stream:
+                for (valid, words, info) in tqdm(map_func(self.extract_valid_sentence_words, stream)):
+                    # print("rnmb", words)
+                    # Words may be filtered away due to unidecode etc.
+                    # In that case the words should not be passed on.
+                    if valid and len(words):
+                        self.stats['valid'] += 1
+                        yield words, info
+
+                    self.stats['total'] += 1
+                    # print("cnmb", words, "\n")
+        finally:
+            if pool is not None:
+                pool.close()
 
 
 class TweetWordGenerator(WordGenerator):
@@ -300,15 +321,17 @@ class TweetWordGenerator(WordGenerator):
         Any file opening/closing should be handled outside of this class.
     '''
     def __init__(self,
-                 stream,
-                 tokenizer,
+                 file_path,
+                 lang,
                  wanted_emojis=None,
                  english_words=None,
                  norm_unicode_text=True,
                  allow_unicode_text=True,
                  ignore_retweets=True,
                  ignore_url_tweets=True,
-                 ignore_mention_tweets=False):
+                 ignore_mention_tweets=False,
+                 processes=1,
+                 chunksize=100):
 
         self.wanted_emojis = wanted_emojis
         self.english_words = english_words
@@ -316,23 +339,18 @@ class TweetWordGenerator(WordGenerator):
         self.ignore_url_tweets = ignore_url_tweets
         self.ignore_mention_tweets = ignore_mention_tweets
 
-        WordGenerator.__init__(self, stream, tokenizer, ignore_emojis=False,
+        WordGenerator.__init__(self, file_path, lang, ignore_emojis=False,
                                norm_unicode_text=norm_unicode_text,
-                               allow_unicode_text=allow_unicode_text)
+                               allow_unicode_text=allow_unicode_text,
+                               processes=processes, chunksize=chunksize)
 
-    def validated_tweet(self, data):
+    def validated_tweet(self, text):
         ''' A bunch of checks to determine whether the tweet is valid.
             Also returns emojis contained by the tweet.
         '''
 
         # Ordering of validations is important for speed
         # If it passes all checks, then the tweet is validated for usage
-
-        # Skips incomplete tweets
-        if len(data) <= 2:
-            return False, []
-
-        text = data[1]
 
         if self.ignore_retweets and RETWEET_RE.search(text):
             return False, []
@@ -373,6 +391,7 @@ class TweetWordGenerator(WordGenerator):
         return True, words, {'length': len(words),
                              'n_normal_words': n_words,
                              'n_english': n_english}
+
         if valid_length and valid_english:
             return True, words, {'length': len(words),
                                  'n_normal_words': n_words,
