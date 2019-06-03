@@ -6,11 +6,12 @@
 
 from __future__ import division, print_function
 
-import re
 import MeCab
+import os
 import unicodedata
 import neologdn
 import numpy as np
+import re
 import stanfordnlp
 
 from multiprocessing import Pool
@@ -48,6 +49,7 @@ ALLOWED_CONVERTED_UNICODE_PUNCTUATION = """!"#$'()+,-.:;<=>?@`~"""
 
 class StanfordTokenizer():
     def __init__(self, lang, model_dir, processors='tokenize,mwt,pos,lemma'):
+        os.environ['CUDA_VISIBLE_DEVICES'] = "3"
         self.nlp = stanfordnlp.Pipeline(processors=processors,
                                         models_dir=model_dir,
                                         lang=lang)
@@ -91,7 +93,7 @@ def get_default_tokenizer(lang, model_dir='/data/stanfordnlp_resources'):
     if lang == 'ja':
         return MeCabTokenizer()
     elif lang in ('ar', 'zh'):
-        return StanfordTokenizer(lang, model_dir)
+        return StanfordTokenizer(lang, model_dir, processors="tokenize,mwt")
     else:
         return TweetTokenizer(preserve_case=True, reduce_len=True, strip_handles=True)
 

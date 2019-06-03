@@ -50,7 +50,7 @@ def main(input_path, output_dir, prefix, emoji_freq_path, vocab_path, topn, trai
     token2index = json.loads(open(vocab_path, "r").read())
 
     def most_common_emoji(emoji_freq_path, topn):
-        freq = {line.split()[0]: line.split()[1] for line in open(emoji_freq_path).readlines()}
+        freq = {line.split()[0]: int(line.split()[1]) for line in open(emoji_freq_path).readlines()}
         freq_topn = sorted(freq.items(), key=itemgetter(1), reverse=True)[:topn]
         emoji_topn = [token2index[freq[0]] for freq in freq_topn]
         return emoji_topn
@@ -70,7 +70,7 @@ def main(input_path, output_dir, prefix, emoji_freq_path, vocab_path, topn, trai
     with open(input_path, "r") as fi:
         tidy_data = []
         for line in tqdm(fi):
-            tokens = json.loads(line)
+            tokens = line.split()
             id_tokens = as_ids(tokens)
             if any(emoji in id_tokens for emoji in emoji_topn):
                 tidy_data.append(id_tokens)
@@ -81,7 +81,6 @@ def main(input_path, output_dir, prefix, emoji_freq_path, vocab_path, topn, trai
     y = []
     emoji_indices = defaultdict(list)
     for i, id_tokens in enumerate(tidy_data):
-        X[i, :len(id_tokens)] = id_tokens[:min(maxlen, len(id_tokens))]
         each_y = np.zeros(topn)
         for token_id in id_tokens:
             try:
@@ -90,10 +89,14 @@ def main(input_path, output_dir, prefix, emoji_freq_path, vocab_path, topn, trai
                 break
             except ValueError:
                 continue
-        emoji_indices[emoji_index].append(i)
 
         assert each_y.sum() == 1
         y.append(each_y)
+
+        id_tokens = [t for t in id_tokens if t not in emoji_topn]
+        X[i, :len(id_tokens)] = id_tokens[:min(maxlen, len(id_tokens))]
+
+        emoji_indices[emoji_index].append(i)
 
     tidy_data.clear()
 
@@ -104,16 +107,20 @@ def main(input_path, output_dir, prefix, emoji_freq_path, vocab_path, topn, trai
         sample_length = len(sample_indices)
         train += sample_indices[:int(sample_length*train_size)]
         val += sample_indices[int(sample_length*train_size):int(sample_length*(train_size+val_size))]
-        test += sample_indices[int(sample_length*(1-train_size-val_size)):]
+        test += sample_indices[int(sample_length*(train_size+val_size)):]
+        print(sample_length,
+              len(sample_indices[:int(sample_length*train_size)]), 
+              len(sample_indices[int(sample_length*train_size):int(sample_length*(train_size+val_size))]),
+              len(sample_indices[int(sample_length*(train_size+val_size)):]))
 
     np.random.shuffle(train)
-    np.random.shuffle(test)
     np.random.shuffle(val)
+    np.random.shuffle(test)
 
     filtered_X = []
     filtered_y = []
     print(train[:5], test[:5], val[:5])
-    total = train + test + val
+    total = train + val + test
     for index in total:
         filtered_X.append(X[index])
         filtered_y.append(y[index])

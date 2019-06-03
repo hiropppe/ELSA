@@ -33,7 +33,7 @@ def main(input_path, output_dir, lang, processes):
                     emoji_sent = 1
                     emoji_freq[token] += 1
             n_emoji_sents += emoji_sent
-            print(json.dumps(tokens), file=fot)
+            print(' '.join(tokens), file=fot)
 
     print(n_sents, n_emoji, n_emoji_sents, float(n_emoji_sents)/n_sents)
 

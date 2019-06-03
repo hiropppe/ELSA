@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 import click
 import gensim
 import json
@@ -6,6 +5,7 @@ import logging
 import multiprocessing
 import subprocess
 
+from gensim.models import word2vec
 from pathlib import Path
 from tqdm import tqdm
 
@@ -39,6 +39,7 @@ class JsonSentenceGenerator():
 @click.argument("input_path")
 @click.argument("output_dir")
 @click.argument("model_prefix")
+@click.option('--json_input/--no_json_input', default=False)
 @click.option("--input_model", "-m", help="")
 @click.option("--n_splits", "-s", default=1, help="")
 @click.option('--sg', default=1, help='Training algorithm: 1 for skip-gram; otherwise CBOW.')
@@ -49,6 +50,7 @@ class JsonSentenceGenerator():
 def main(input_path,
          output_dir,
          model_prefix,
+         json_input,
          input_model,
          n_splits,
          sg,
@@ -63,7 +65,6 @@ def main(input_path,
     model_out = Path(output_dir).joinpath("{:s}_wv.model".format(model_prefix)).as_posix()
     wv_out = Path(output_dir).joinpath("{:s}_wv.txt".format(model_prefix)).as_posix()
 
-    jsg = JsonSentenceGenerator(input_path, n_splits)
     if input_model:
         model = gensim.models.Word2Vec.load(input_model)
         model.model_trimmed_post_training = False
@@ -76,11 +77,22 @@ def main(input_path,
                                        workers=workers)
         update = False
 
-    for sents in jsg.generate():
-        model.build_vocab(sents, update=update)
-        model.train(sents, total_examples=model.corpus_count, epochs=model.iter)
-        update = True
+    if json_input:
+        jsg = JsonSentenceGenerator(input_path, n_splits)
+        for sents in jsg.generate():
+            model.build_vocab(sents, update=update)
+            model.train(sents, total_examples=model.corpus_count, epochs=model.iter)
+            update = True
+    else:
+        corpus = word2vec.LineSentence(input_path)
+        model = word2vec.Word2Vec(corpus,
+                                  sg=sg,
+                                  size=size,
+                                  hs=hs,
+                                  negative=negative,
+                                  workers=workers)
 
+    model.init_sims(replace=True)
     model.save(model_out)
     model.wv.save_word2vec_format(wv_out, binary=False)
 
