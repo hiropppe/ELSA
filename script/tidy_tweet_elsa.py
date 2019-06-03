@@ -63,6 +63,7 @@ def main(input_path, output_dir, prefix, emoji_freq_path, vocab_path, topn, trai
     out_y_path = Path(output_dir).joinpath("{:s}_y.npy".format(prefix)).as_posix()
 
     token2index = json.loads(open(vocab_path, "r").read())
+    index2token = [item[0] for item in sorted(token2index.items(), key=itemgetter(1))]
 
     def most_common_emoji(emoji_freq_path, topn):
         freq = {line.split()[0]: int(line.split()[1]) for line in open(emoji_freq_path).readlines()}
@@ -122,7 +123,7 @@ def main(input_path, output_dir, prefix, emoji_freq_path, vocab_path, topn, trai
             emoji2_indices.append(i)
 
     for i in range(topn):
-        print(i, len(indices_by_emoji1[i]), len(indices_by_emoji2[i]))
+        print(i, index2token[emoji_topn[i]], len(indices_by_emoji1[i]), len(indices_by_emoji2[i]))
 
     tidy_data.clear()
 
