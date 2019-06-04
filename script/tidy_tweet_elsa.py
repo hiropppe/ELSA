@@ -2,6 +2,7 @@ import click
 import math
 import numpy as np
 import json
+import sys
 
 from collections import defaultdict, OrderedDict
 from filter_utils import SPECIAL_TOKENS
@@ -36,6 +37,7 @@ def calculate_batchsize_maxlen(texts):
 def assign_data_index_in_balance(train, val, test, indices_by_emoji, emoji_indices, topn):
     sample_holds = [train, val, test]
     n = 0
+    pbar = tqdm()
     while emoji_indices:
         emoji_index = topn - n % topn - 1
         sample_indices = indices_by_emoji[emoji_index]
@@ -46,6 +48,7 @@ def assign_data_index_in_balance(train, val, test, indices_by_emoji, emoji_indic
                     hold.append(sample_index)
                     emoji_indices.remove(sample_index)
         n += 1
+        pbar.update()
 
 
 @click.command()
@@ -98,38 +101,47 @@ def main(input_path, output_dir, prefix, emoji_freq_path, vocab_path, topn, trai
     # single emoji data index
     indices_by_emoji1 = defaultdict(list)
     # multiple emoji data index
-    indices_by_emoji2, emoji2_indices = defaultdict(list), list()
+    #indices_by_emoji2, emoji2_indices = defaultdict(list), set()
     for i, id_tokens in enumerate(tidy_data):
         each_y = np.zeros(topn)
         emoji_index_set = set()
         for token_id in id_tokens:
             try:
                 emoji_index = emoji_topn.index(token_id)
-                each_y[emoji_index] = 1
                 emoji_index_set.add(emoji_index)
+                break
             except ValueError:
                 continue
-
-        y.append(each_y)
 
         id_tokens = [t for t in id_tokens if t not in emoji_topn]
         X[i, :len(id_tokens)] = id_tokens[:min(maxlen, len(id_tokens))]
 
         if len(emoji_index_set) == 1:
             indices_by_emoji1[emoji_index].append(i)
+            each_y[emoji_index] = 1
         else:
+            min_index, min_count = -1, sys.maxsize
             for emoji_index in emoji_index_set:
-                indices_by_emoji2[emoji_index].append(i)
-            emoji2_indices.append(i)
+                n_indices = len(indices_by_emoji1[emoji_index])
+                if n_indices < min_count:
+                    min_index = emoji_index
+                    min_count = n_indices
+            indices_by_emoji1[min_index].append(i)
+            each_y[min_index] = 1
+                #indices_by_emoji2[emoji_index].append(i)
+            #emoji2_indices.add(i)
+
+        y.append(each_y)
 
     for i in range(topn):
-        print(i, index2token[emoji_topn[i]], len(indices_by_emoji1[i]), len(indices_by_emoji2[i]))
+        print(i, len(indices_by_emoji1[i]))
+        #print(i, index2token[emoji_topn[i]], len(indices_by_emoji1[i]), len(indices_by_emoji2[i]))
 
     tidy_data.clear()
 
     train, val, test = [], [], []
     val_size = 1 - train_size - test_size
-    for emoji, sample_indices in indices_by_emoji1.items():
+    for i, (emoji, sample_indices) in enumerate(indices_by_emoji1.items()):
         np.random.shuffle(sample_indices)
         sample_length = len(sample_indices)
         train += sample_indices[:int(sample_length*train_size)]
@@ -137,7 +149,7 @@ def main(input_path, output_dir, prefix, emoji_freq_path, vocab_path, topn, trai
         test += sample_indices[int(sample_length*(train_size+val_size)):]
 
     # assing multiple emoji (topn co-occured) indices in balance
-    assign_data_index_in_balance(train, val, test, indices_by_emoji2, emoji2_indices, topn)
+    #assign_data_index_in_balance(train, val, test, indices_by_emoji2, emoji2_indices, topn)
 
     np.random.shuffle(train)
     np.random.shuffle(val)
