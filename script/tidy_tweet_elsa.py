@@ -10,6 +10,8 @@ from operator import itemgetter
 from pathlib import Path
 from tqdm import tqdm
 
+from util import np_to_tfrecords
+
 
 def calculate_batchsize_maxlen(texts):
     """ Calculates the maximum length in the provided texts and a suitable
@@ -54,16 +56,15 @@ def assign_data_index_in_balance(train, val, test, indices_by_emoji, emoji_indic
 @click.command()
 @click.argument("input_path")
 @click.argument("output_dir")
-@click.argument("prefix")
+@click.argument("lang")
 @click.argument("emoji_freq_path")
 @click.argument("vocab_path")
 @click.option("--topn", "-n", default=64)
 @click.option("--train_size", "-vs", default=0.7)
 @click.option("--test_size", "-ts", default=0.1)
-def main(input_path, output_dir, prefix, emoji_freq_path, vocab_path, topn, train_size, test_size):
+def main(input_path, output_dir, lang, emoji_freq_path, vocab_path, topn, train_size, test_size):
 
-    out_X_path = Path(output_dir).joinpath("{:s}_X.npy".format(prefix)).as_posix()
-    out_y_path = Path(output_dir).joinpath("{:s}_y.npy".format(prefix)).as_posix()
+    output_path = (Path(output_dir) / ("elsa_{:s}".format(lang))).__str__()
 
     token2index = json.loads(open(vocab_path, "r").read())
     index2token = [item[0] for item in sorted(token2index.items(), key=itemgetter(1))]
@@ -163,8 +164,10 @@ def main(input_path, output_dir, prefix, emoji_freq_path, vocab_path, topn, trai
         filtered_y.append(y[index])
     print(len(filtered_y), len(filtered_X))
 
-    np.save(out_X_path, filtered_X)
-    np.save(out_y_path, filtered_y)
+    X = np.array(filtered_X, dtype=np.uint32)
+    y = np.array(filtered_y, dtype=np.uint32)
+
+    np_to_tfrecords(X, y, file_path_prefix=output_path)
 
 
 if __name__ == '__main__':
