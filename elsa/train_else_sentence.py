@@ -11,16 +11,17 @@ from keras.optimizers import Adam
 from sklearn.metrics import classification_report, recall_score, precision_score, f1_score
 
 
-flags.DEFINE_string("lang", default="ja", help="lang to train")
+flags.DEFINE_string("lang", default=None, help="lang to train")
 
 flags.DEFINE_integer("maxlen", default=20, help="max sequence length")
 flags.DEFINE_integer("batch_size", default=250, help="batch size")
+flags.DEFINE_string("optimizer", default="adam", help="optimizer")
 flags.DEFINE_float("lr", default=3e-4, help="learning rate")
+flags.DEFINE_string("loss", default="categorical_crossentropy", help="loss")
 flags.DEFINE_integer("epochs", default=100, help="max epochs")
 flags.DEFINE_integer("epoch_size", default=25000, help="number of data to process in each epoch")
 flags.DEFINE_integer("patience", default=3, help="number of patience epochs for early stopping")
 flags.DEFINE_string("checkpoint_dir", default="./ckpt", help="")
-flags.DEFINE_string("optimizer", default="adam", help="optimizer")
 flags.DEFINE_string("data_dir", default="/data/elsa", help="directory contains preprocessed data")
 
 flags.DEFINE_integer("lstm_hidden", default=512, help="")
@@ -58,7 +59,7 @@ def main(unused_argv):
     (X_val, y_val) = (input_vec[train_end:val_end], input_label[train_end:val_end])
     (X_test, y_test) = (input_vec[val_end:], input_label[val_end:])
 
-    model = elsa_architecture(nb_classes=FLAGS.nb_classes,
+    model = elsa_architecture(nb_classes=nb_classes,
                               nb_tokens=nb_tokens,
                               maxlen=FLAGS.maxlen,
                               final_dropout_rate=FLAGS.final_drop,
@@ -76,17 +77,23 @@ def main(unused_argv):
     elif FLAGS.optimizer == 'rmsprop':
         model.compile(loss=FLAGS.loss, optimizer='rmsprop', metrics=['accuracy'])
 
+    checkpoint_dir = Path(FLAGS.checkpoint_dir)
+    if not checkpoint_dir.exists():
+        checkpoint_dir.mkdir()
+    checkpoint_weight_path = (checkpoint_dir / "elsa_sentence_{:s}.hdf5".format(FLAGS.lang)).__str__()
+
+    callbacks = [
+        keras.callbacks.EarlyStopping(
+            monitor='val_loss', min_delta=0, patience=FLAGS.patience, verbose=0, mode='auto'),
+        keras.callbacks.ModelCheckpoint(checkpoint_weight_path, monitor='val_loss',
+                                        verbose=0, save_best_only=True, save_weights_only=False, mode='auto', period=1)
+    ]
     model.fit(X_train,
               y_train,
               batch_size=FLAGS.batch_size,
               epochs=FLAGS.epochs,
               validation_data=(X_val, y_val),
-              callbacks=[
-                  keras.callbacks.EarlyStopping(
-                      monitor='val_loss', min_delta=0, patience=FLAGS.patience, verbose=0, mode='auto'),
-                  keras.callbacks.ModelCheckpoint(FLAGS.checkpoint_weight_path, monitor='val_loss',
-                                                  verbose=0, save_best_only=True, save_weights_only=False, mode='auto', period=1)
-              ],
+              callbacks=callbacks,
               verbose=True)
 
     _, acc = model.evaluate(X_test, y_test, batch_size=FLAGS.batch_size, verbose=0)
@@ -96,7 +103,8 @@ def main(unused_argv):
     freq_topn = sorted(freq.items(), key=itemgetter(1), reverse=True)[:nb_classes]
 
     y_pred = model.predict(X_test)
-    print(classification_report(y_test.argmax(axis=1), y_pred.argmax(axis=1), target_names=[e[0] for e in freq_topn]))
+    print(classification_report(y_test.argmax(axis=1), y_pred.argmax(
+        axis=1), target_names=[e[0] for e in freq_topn]))
 
 
 if __name__ == "__main__":

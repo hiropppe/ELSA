@@ -13,8 +13,8 @@ from word_generator import TweetWordGenerator
 @click.option("--lang", "-l", required=True, help="")
 @click.option("--processes", "-w", default=os.cpu_count()-1, help="")
 def main(input_path, output_dir, lang, processes):
-    token_output = Path(output_dir).joinpath('elsa_{:s}_tokens.txt'.format(lang)).as_posix()
-    emoji_output = Path(output_dir).joinpath('elsa_{:s}_emoji.txt'.format(lang)).as_posix()
+    token_output = Path(output_dir).joinpath('{:s}_tokens.txt'.format(lang)).as_posix()
+    emoji_output = Path(output_dir).joinpath('{:s}_emoji.txt'.format(lang)).as_posix()
 
     emoji_unicodes = json.loads(open("./emoji_unicode", "r").read()).keys()
 

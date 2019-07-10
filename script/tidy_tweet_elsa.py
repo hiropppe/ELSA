@@ -52,24 +52,25 @@ def assign_data_index_in_balance(train, val, test, indices_by_emoji, emoji_indic
 
 
 @click.command()
-@click.argument("input_path")
-@click.argument("output_dir")
+@click.argument("data_dir")
 @click.argument("lang")
-@click.argument("emoji_freq_path")
-@click.argument("vocab_path")
 @click.option("--topn", "-n", default=64)
 @click.option("--train_size", "-vs", default=0.7)
 @click.option("--test_size", "-ts", default=0.1)
-def main(input_path, output_dir, lang, emoji_freq_path, vocab_path, topn, train_size, test_size):
+def main(data_dir, lang, topn, train_size, test_size):
 
-    out_X_path = Path(output_dir).joinpath("elsa_{:s}_X.npy".format(lang)).as_posix()
-    out_y_path = Path(output_dir).joinpath("elsa_{:s}_y.npy".format(lang)).as_posix()
+    data_dir = Path(data_dir)
+    input_path = (data_dir / "{:s}_tokens.txt".format(lang)).__str__()
+    emoji_path = (data_dir / "{:s}_emoji.txt".format(lang)).__str__()
+    vocab_path = (data_dir / "{:s}_vocab.json".format(lang)).__str__()
+    out_X_path = (data_dir / "{:s}_X.npy".format(lang)).__str__()
+    out_y_path = (data_dir / "{:s}_y.npy".format(lang)).__str__()
 
     token2index = json.loads(open(vocab_path, "r").read())
-    index2token = [item[0] for item in sorted(token2index.items(), key=itemgetter(1))]
+    # index2token = [item[0] for item in sorted(token2index.items(), key=itemgetter(1))]
 
-    def most_common_emoji(emoji_freq_path, topn):
-        freq = {line.split()[0]: int(line.split()[1]) for line in open(emoji_freq_path).readlines()}
+    def most_common_emoji(emoji_path, topn):
+        freq = {line.split()[0]: int(line.split()[1]) for line in open(emoji_path).readlines()}
         freq_topn = sorted(freq.items(), key=itemgetter(1), reverse=True)[:topn]
         emoji_topn = [token2index[freq[0]] for freq in freq_topn]
         return emoji_topn
@@ -83,7 +84,7 @@ def main(input_path, output_dir, lang, emoji_freq_path, vocab_path, topn, train_
                 tokens_as_id.append(SPECIAL_TOKENS.index("CUSTOM_UNKNOWN"))
         return tokens_as_id
 
-    emoji_topn = most_common_emoji(emoji_freq_path, topn=topn)
+    emoji_topn = most_common_emoji(emoji_path, topn=topn)
 
     # filter out of topn emoji sentences
     with open(input_path, "r") as fi:

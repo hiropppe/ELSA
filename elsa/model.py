@@ -27,7 +27,8 @@ def elsa_architecture(nb_classes,
                       pre_embedding=None,
                       high=False,
                       LSTM_hidden=512,
-                      LSTM_drop=0.5):
+                      LSTM_drop=0.5,
+                      test=False):
     """
     Returns the DeepMoji architecture uninitialized and
     without using the pretrained model weights.
@@ -83,16 +84,14 @@ def elsa_architecture(nb_classes,
     # entire embedding channels are dropped out instead of the
     # normal Keras embedding dropout, which drops all channels for entire words
     # many of the datasets contain so few words that losing one or more words can alter the emotions completely
-    if embed_dropout_rate != 0:
+    if not test and embed_dropout_rate != 0:
         embed_drop = SpatialDropout1D(embed_dropout_rate, name='embed_drop')
         x = embed_drop(x)
 
     # skip-connection from embedding to output eases gradient-flow and allows access to lower-level features
     # ordering of the way the merge is done is important for consistency with the pretrained model
-    lstm_0_output = Bidirectional(
-        LSTM(LSTM_hidden, return_sequences=True, dropout=LSTM_drop), name="bi_lstm_0")(x)
-    lstm_1_output = Bidirectional(
-        LSTM(LSTM_hidden, return_sequences=True, dropout=LSTM_drop), name="bi_lstm_1")(lstm_0_output)
+    lstm_0_output = Bidirectional(LSTM(LSTM_hidden, return_sequences=True, dropout=0.0 if test else LSTM_drop), name="bi_lstm_0" )(x)
+    lstm_1_output = Bidirectional(LSTM(LSTM_hidden, return_sequences=True, dropout=0.0 if test else LSTM_drop), name="bi_lstm_1" )(lstm_0_output)
     x = concatenate([lstm_1_output, lstm_0_output, x])
     if high:
         x = TimeDistributed(Highway(activation='tanh', name="high"))(x)
@@ -106,7 +105,7 @@ def elsa_architecture(nb_classes,
 
     if not feature_output:
         # output class probabilities
-        if final_dropout_rate != 0:
+        if not test and final_dropout_rate != 0:
             x = Dropout(final_dropout_rate)(x)
 
         if nb_classes > 2:

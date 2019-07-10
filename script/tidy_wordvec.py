@@ -36,9 +36,8 @@ class JsonSentenceGenerator():
 
 
 @click.command()
-@click.argument("input_path")
-@click.argument("output_dir")
-@click.argument("model_prefix")
+@click.argument("data_dir")
+@click.argument("lang")
 @click.option('--json_input/--no_json_input', default=False)
 @click.option("--input_model", "-m", help="")
 @click.option("--n_splits", "-s", default=1, help="")
@@ -47,9 +46,8 @@ class JsonSentenceGenerator():
 @click.option('--hs', default=0, help='If 1, hierarchical softmax will be used for model training. If 0, and negative is non-zero, negative sampling will be used.')
 @click.option('--negative', default=20, help='If > 0, negative sampling will be used, the int for negative specifies how many “noise words” should be drawn (usually between 5-20). If set to 0, no negative sampling is used.')
 @click.option('--workers', default=None, help='Use these many worker threads to train the model (=faster training with multicore machines).')
-def main(input_path,
-         output_dir,
-         model_prefix,
+def main(data_dir,
+         lang,
          json_input,
          input_model,
          n_splits,
@@ -62,8 +60,10 @@ def main(input_path,
 
     workers = workers if workers else multiprocessing.cpu_count() - 1
 
-    model_out = Path(output_dir).joinpath("{:s}_wv.model".format(model_prefix)).as_posix()
-    wv_out = Path(output_dir).joinpath("{:s}_wv.txt".format(model_prefix)).as_posix()
+    data_dir = Path(data_dir)
+    input_path = (data_dir / "{:s}_tokens.txt".format(lang)).__str__()
+    model_out = (data_dir / "{:s}_wv.model".format(lang)).__str__()
+    wv_out = (data_dir / "{:s}_wv.txt".format(lang)).__str__()
 
     if input_model:
         model = gensim.models.Word2Vec.load(input_model)

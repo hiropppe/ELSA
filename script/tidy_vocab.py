@@ -5,16 +5,16 @@ import numpy as np
 
 from pathlib import Path
 from filter_utils import SPECIAL_TOKENS
-from tqdm import tqdm
 
 
 @click.command()
-@click.argument("input_path")
-@click.argument("output_dir")
-@click.argument("prefix")
-def main(input_path, output_dir, prefix):
-    out_vocab_path = Path(output_dir).joinpath("{:s}_vocab.txt".format(prefix)).as_posix()
-    out_vec_path = Path(output_dir).joinpath("{:s}_wv.npy".format(prefix)).as_posix()
+@click.argument("data_dir")
+@click.argument("lang")
+def main(data_dir, lang):
+    data_dir = Path(data_dir)
+    input_path = (data_dir / "{:s}_wv.txt".format(lang)).__str__()
+    out_vocab_path = (data_dir / "{:s}_vocab.json".format(lang)).__str__()
+    out_vec_path = (data_dir / "{:s}_wv.npy".format(lang)).__str__()
 
     vocab = SPECIAL_TOKENS.copy()
 

@@ -13,11 +13,11 @@ from keras.optimizers import Adam
 from sklearn.metrics import classification_report, recall_score, precision_score, f1_score
 
 
-flags.DEFINE_string("corpus_prefix", help="corpus to encode")
-flags.DEFINE_string("lang", default="en", help="lang to train")
-flags.DEFINE_string("weight_prefix", help="elsa model weight path")
+flags.DEFINE_string("corpus_prefix", default=None, help="corpus to encode")
+flags.DEFINE_string("weight_prefix", default=None, help="elsa model weight path")
 
-flags.DEFINE_integer("maxlen", default=20, help="max sequence length")
+flags.DEFINE_integer("s_maxlen", default=20, help="max sequence length")
+flags.DEFINE_integer("t_maxlen", default=50, help="max sequence length")
 flags.DEFINE_integer("batch_size", default=250, help="batch size")
 flags.DEFINE_float("lr", default=3e-4, help="learning rate")
 flags.DEFINE_integer("epochs", default=100, help="max epochs")
@@ -44,21 +44,34 @@ def main(unused_argv):
     tf.logging.set_verbosity(tf.logging.INFO)
 
     data_dir = Path(FLAGS.data_dir)
+
     output_dir = Path(FLAGS.output_dir)
-    df = pd.read_csv(FLAGS.corpus)
+    if not output_dir.exists():
+        output_dir.mkdir()
+    df = pd.read_csv(FLAGS.corpus_prefix + ".csv")
     s_lang, t_lang = df.columns[1], df.columns[2]
 
-    for lang in (s_lang, t_lang):
+    for i, lang in enumerate((s_lang, t_lang)):
+        wv_path = (data_dir / "{:s}_wv.npy".format(lang)).__str__()
+        wv = np.load(wv_path)
+        nb_tokens = len(wv)
+        embed_dim = wv.shape[1]
+
+        if i == 0:
+            maxlen = FLAGS.s_maxlen
+        else:
+            maxlen = FLAGS.t_maxlen
+
         vocab_path = data_dir / "{:s}_vocab.json".format(lang)
         vocab = json.load(open(vocab_path.__str__()))
 
-        output_X_path = output_dir / Path(FLAGS.corpus_prefix).name + FLAGS.lang + "_X.npy"
-        output_y_path = output_dir / Path(FLAGS.corpus_prefix).name + "_y.npy"
+        output_X_path = output_dir / (Path(FLAGS.corpus_prefix).name + "_" + lang + "_X.npy").__str__()
+        output_y_path = output_dir / (Path(FLAGS.corpus_prefix).name + "_y.npy").__str__()
 
         model = elsa_architecture(nb_classes=FLAGS.nb_classes,
-                                  nb_tokens=FLAGS.nb_tokens,
-                                  maxlen=FLAGS.maxlen,
-                                  embed_dim=FLAGS.embed_dim,
+                                  nb_tokens=nb_tokens,
+                                  maxlen=maxlen,
+                                  embed_dim=embed_dim,
                                   feature_output=False,
                                   return_attention=False,
                                   test=True)
@@ -72,15 +85,16 @@ def main(unused_argv):
             for text in texts:
                 tokens = text.split()
                 sequence = []
-                for token in enumerate(tokens):
+                for token in tokens:
                     if token in vocab:
                         sequence.append(vocab[token])
                     else:
                         sequence.append(1)  # UNKNOWN
+                sequences.append(sequence)
             sequences = tf.keras.preprocessing.sequence.pad_sequences(sequences, maxlen=maxlen, padding="post", dtype="int32")
             return sequences
 
-        sequences = to_sequences(df[lang].values, vocab, FLAGS.maxlen)
+        sequences = to_sequences(df[lang].values, vocab, maxlen)
 
         encoded_sentences = intermediate_layer_model.predict(sequences, batch_size=FLAGS.batch_size)
         np.save(output_X_path, encoded_sentences)
