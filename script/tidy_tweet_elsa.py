@@ -10,8 +10,6 @@ from operator import itemgetter
 from pathlib import Path
 from tqdm import tqdm
 
-from util import np_to_tfrecords
-
 
 def calculate_batchsize_maxlen(texts):
     """ Calculates the maximum length in the provided texts and a suitable
@@ -64,7 +62,8 @@ def assign_data_index_in_balance(train, val, test, indices_by_emoji, emoji_indic
 @click.option("--test_size", "-ts", default=0.1)
 def main(input_path, output_dir, lang, emoji_freq_path, vocab_path, topn, train_size, test_size):
 
-    output_path = (Path(output_dir) / ("elsa_{:s}".format(lang))).__str__()
+    out_X_path = Path(output_dir).joinpath("elsa_{:s}_X.npy".format(lang)).as_posix()
+    out_y_path = Path(output_dir).joinpath("elsa_{:s}_y.npy".format(lang)).as_posix()
 
     token2index = json.loads(open(vocab_path, "r").read())
     index2token = [item[0] for item in sorted(token2index.items(), key=itemgetter(1))]
@@ -167,7 +166,8 @@ def main(input_path, output_dir, lang, emoji_freq_path, vocab_path, topn, train_
     X = np.array(filtered_X, dtype=np.uint32)
     y = np.array(filtered_y, dtype=np.uint32)
 
-    np_to_tfrecords(X, y, file_path_prefix=output_path)
+    np.save(out_X_path, filtered_X)
+    np.save(out_y_path, filtered_y)
 
 
 if __name__ == '__main__':
