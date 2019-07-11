@@ -13,6 +13,8 @@ from sklearn.metrics import accuracy_score, classification_report, recall_score,
 
 flags.DEFINE_string("s_lang", default="en", help="lang")
 flags.DEFINE_string("t_lang", default="ja", help="lang")
+flags.DEFINE_integer("s_maxlen", default=20, help="")
+flags.DEFINE_integer("t_maxlen", default=50, help="")
 
 flags.DEFINE_string("mode", default="train", help="")
 flags.DEFINE_integer("batch_size", default=32, help="batch size")
@@ -24,7 +26,8 @@ flags.DEFINE_float("validation_split", default=0.2, help="")
 flags.DEFINE_string("checkpoint_dir", default="./ckpt", help="")
 flags.DEFINE_string("optimizer", default="adam", help="optimizer")
 flags.DEFINE_string("input_dir", default="./embed", help="directory contains preprocessed data")
-flags.DEFINE_string("doc_name", default="books_train_review", help="directory contains preprocessed data")
+flags.DEFINE_string("doc_name", default="books_train_review",
+                    help="directory contains preprocessed data")
 
 flags.DEFINE_integer("hidden_dim", default=64, help="")
 flags.DEFINE_float("drop", default=0.5, help="")
@@ -47,29 +50,40 @@ def main(unused_argv):
     target_X = np.load(target_embed_path, allow_pickle=True)
     y = np.load(label_path)
 
-    model = elsa_doc_model(hidden_dim=FLAGS.hidden_dim, dropout=FLAGS.drop, mode=FLAGS.mode)
+    source_X = tf.keras.preprocessing.sequence.pad_sequences(
+        source_X, dtype=np.float32, maxlen=FLAGS.s_maxlen)
+    target_X = tf.keras.preprocessing.sequence.pad_sequences(
+        target_X, dtype=np.float32, maxlen=FLAGS.t_maxlen)
+
+    model = elsa_doc_model(hidden_dim=FLAGS.hidden_dim,
+                           dropout=FLAGS.drop,
+                           mode=FLAGS.mode,
+                           nb_maxlen=[FLAGS.t_maxlen, FLAGS.s_maxlen])
     model.summary()
 
     checkpoint_dir = Path(FLAGS.checkpoint_dir)
     if not checkpoint_dir.exists():
         checkpoint_dir.mkdir()
-    checkpoint_weight_path = (checkpoint_dir / "elsa_doc_{:s}_{:s}.hdf5".format(FLAGS.s_lang, FLAGS.t_lang)).__str__()
+    checkpoint_weight_path = (
+        checkpoint_dir / "elsa_doc_{:s}_{:s}.hdf5".format(FLAGS.s_lang, FLAGS.t_lang)).__str__()
 
     if FLAGS.mode == "train":
         callbacks = [
-            keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0, patience=5, verbose=0, mode='auto'),
-            keras.callbacks.ModelCheckpoint(filepath=checkpoint_weight_path, verbose=0, save_best_only=True, monitor='val_acc')
+            keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0,
+                                          patience=5, verbose=0, mode='auto'),
+            keras.callbacks.ModelCheckpoint(
+                filepath=checkpoint_weight_path, verbose=0, save_best_only=True, monitor='val_acc')
         ]
         model.compile(loss='binary_crossentropy', optimizer=FLAGS.optimizer, metrics=['accuracy'])
         model.fit([source_X, target_X], y,
                   batch_size=FLAGS.batch_size,
                   epochs=FLAGS.epochs,
                   validation_split=FLAGS.validation_split,
-                  verbose=0,
+                  verbose=1,
                   callbacks=callbacks)
     else:
         model.load_weights(filepath=checkpoint_weight_path)
-        predict_total = model.predict([target_X, source_X], batch_size=FLAGS.batch_size)
+        predict_total = model.predict([source_X, target_X], batch_size=FLAGS.batch_size)
         predict_total = [int(x > 0.5) for x in predict_total]
         acc = accuracy_score(predict_total, y)
         print("Test Accuracy: {:.3f}\n".format(acc))

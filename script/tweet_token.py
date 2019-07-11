@@ -10,7 +10,7 @@ from word_generator import TweetWordGenerator
 @click.command()
 @click.argument("input_path")
 @click.argument("output_dir")
-@click.option("--lang", "-l", required=True, help="")
+@click.argument("lang")
 @click.option("--processes", "-w", default=os.cpu_count()-1, help="")
 def main(input_path, output_dir, lang, processes):
     token_output = Path(output_dir).joinpath('{:s}_tokens.txt'.format(lang)).as_posix()
