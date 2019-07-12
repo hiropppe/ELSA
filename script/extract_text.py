@@ -95,7 +95,7 @@ def main(input_path, output_dir, lang, retweet, processes, chunksize, dedupe):
     output_dir = Path(output_dir)
     outputs = {}
     for each_lang in lang:
-        outputs[each_lang] = open((output_dir / ("tweet_" + each_lang + ".txt")).__str__(), "w")
+        outputs[each_lang] = open((output_dir / ("tweet_" + each_lang + ".txt")).__str__(), "a")
 
     for each_text, each_lang in text_generator:
         try:

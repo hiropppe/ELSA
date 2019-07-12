@@ -120,11 +120,6 @@ def main(unused_argv):
     freq_topn = sorted(freq.items(), key=itemgetter(1), reverse=True)[:nb_classes]
 
     if FLAGS.multilabel:
-        from functools import reduce
-
-        def concat_flatten(x, y):
-            return np.concatenate([x.flatten(), y.flatten()])
-
         y_pred = model.predict([X_test], batch_size=FLAGS.batch_size)
         y_pred = [np.squeeze(p) for p in y_pred]
 
