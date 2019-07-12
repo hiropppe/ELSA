@@ -28,6 +28,7 @@ def elsa_architecture(nb_classes,
                       high=False,
                       LSTM_hidden=512,
                       LSTM_drop=0.5,
+                      multilabel=False,
                       test=False):
     """
     Returns the DeepMoji architecture uninitialized and
@@ -109,7 +110,10 @@ def elsa_architecture(nb_classes,
             x = Dropout(final_dropout_rate)(x)
 
         if nb_classes > 2:
-            outputs = [Dense(nb_classes, activation='softmax', name='softmax')(x)]
+            if multilabel:
+                outputs = [Dense(1, activation='sigmoid', name='sigmoid_{:d}'.format(n))(x) for n in range(nb_classes)]
+            else:
+                outputs = [Dense(nb_classes, activation='softmax', name='softmax')(x)]
         else:
             outputs = [Dense(1, activation='sigmoid', name='softmax')(x)]
     else:

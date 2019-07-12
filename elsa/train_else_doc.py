@@ -11,26 +11,25 @@ from keras.optimizers import Adam
 from sklearn.metrics import accuracy_score, classification_report, recall_score, precision_score, f1_score
 
 
+flags.DEFINE_string("data_prefix", default="./embed/books_train_review",
+                    help="directory contains preprocessed data")
 flags.DEFINE_string("s_lang", default="en", help="lang")
 flags.DEFINE_string("t_lang", default="ja", help="lang")
 flags.DEFINE_integer("s_maxlen", default=20, help="")
 flags.DEFINE_integer("t_maxlen", default=50, help="")
 
-flags.DEFINE_string("mode", default="train", help="")
-flags.DEFINE_integer("batch_size", default=32, help="batch size")
+flags.DEFINE_string("optimizer", default="adam", help="optimizer")
 flags.DEFINE_float("lr", default=3e-4, help="learning rate")
 flags.DEFINE_integer("epochs", default=100, help="max epochs")
-flags.DEFINE_integer("epoch_size", default=25000, help="number of data to process in each epoch")
-flags.DEFINE_integer("patience", default=3, help="number of patience epochs for early stopping")
+flags.DEFINE_integer("batch_size", default=32, help="batch size")
 flags.DEFINE_float("validation_split", default=0.2, help="")
 flags.DEFINE_string("checkpoint_dir", default="./ckpt", help="")
-flags.DEFINE_string("optimizer", default="adam", help="optimizer")
-flags.DEFINE_string("input_dir", default="./embed", help="directory contains preprocessed data")
-flags.DEFINE_string("doc_name", default="books_train_review",
-                    help="directory contains preprocessed data")
+flags.DEFINE_integer("patience", default=3, help="number of patience epochs for early stopping")
 
 flags.DEFINE_integer("hidden_dim", default=64, help="")
 flags.DEFINE_float("drop", default=0.5, help="")
+
+flags.DEFINE_string("mode", default="train", help="")
 
 FLAGS = flags.FLAGS
 
@@ -40,11 +39,9 @@ def main(unused_argv):
 
     tf.logging.set_verbosity(tf.logging.INFO)
 
-    input_dir = Path(FLAGS.input_dir)
-
-    source_embed_path = input_dir / (FLAGS.doc_name + "_" + FLAGS.s_lang + "_X.npy")
-    target_embed_path = input_dir / (FLAGS.doc_name + "_" + FLAGS.t_lang + "_X.npy")
-    label_path = input_dir / (FLAGS.doc_name + "_y.npy")
+    source_embed_path = FLAGS.data_prefix + "_" + FLAGS.s_lang + "_X.npy"
+    target_embed_path = FLAGS.data_prefix + "_" + FLAGS.t_lang + "_X.npy"
+    label_path = FLAGS.data_prefix + "_y.npy"
 
     source_X = np.load(source_embed_path, allow_pickle=True)
     target_X = np.load(target_embed_path, allow_pickle=True)

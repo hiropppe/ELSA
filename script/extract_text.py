@@ -7,6 +7,7 @@ import unicodedata
 from functools import partial
 from pathlib import Path
 from multiprocessing import Pool
+from qdbm import depot
 from tqdm import tqdm
 
 
@@ -80,7 +81,11 @@ class TextGenerator():
 @click.option("--retweet", "-rt", is_flag=True, default=False, help="")
 @click.option("--processes", "-p", default=os.cpu_count()-1, help="")
 @click.option("--chunksize", "-c", default=100, help="")
-def main(input_path, output_dir, lang, retweet, processes, chunksize):
+@click.option("--dedupe/--no-dedupe", is_flag=True, default=True, help="")
+def main(input_path, output_dir, lang, retweet, processes, chunksize, dedupe):
+    if dedupe:
+        dedupe_db = depot.open("dedupe.db", "n")
+
     text_generator = TextGenerator(input_path,
                                    lang,
                                    retweet,
@@ -94,7 +99,14 @@ def main(input_path, output_dir, lang, retweet, processes, chunksize):
 
     for each_text, each_lang in text_generator:
         try:
-            print(each_text, file=outputs[each_lang])
+            if each_text:
+                if each_text not in dedupe_db:
+                    print(each_text, file=outputs[each_lang])
+                    dedupe_db[each_text] = "1"
+                else:
+                    print(each_text, file=outputs[each_lang])
+        except KeyboardInterrupt as e:
+            raise e
         except Exception:
             pass
 

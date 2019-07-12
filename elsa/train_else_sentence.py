@@ -18,7 +18,6 @@ flags.DEFINE_string("optimizer", default="adam", help="optimizer")
 flags.DEFINE_float("lr", default=3e-4, help="learning rate")
 flags.DEFINE_string("loss", default="categorical_crossentropy", help="loss")
 flags.DEFINE_integer("epochs", default=100, help="max epochs")
-flags.DEFINE_integer("epoch_size", default=25000, help="number of data to process in each epoch")
 flags.DEFINE_integer("patience", default=3, help="number of patience epochs for early stopping")
 flags.DEFINE_string("checkpoint_dir", default="./ckpt", help="")
 flags.DEFINE_string("data_dir", default="/data/elsa", help="directory contains preprocessed data")
@@ -28,6 +27,7 @@ flags.DEFINE_float("lstm_drop", default=0.5, help="")
 flags.DEFINE_float("final_drop", default=0.5, help="")
 flags.DEFINE_float("embed_drop", default=0.0, help="")
 flags.DEFINE_bool("highway", default=False, help="")
+flags.DEFINE_bool("multilabel", default=False, help="")
 
 flags.mark_flags_as_required(["lang"])
 
@@ -46,7 +46,8 @@ def main(unused_argv):
     emoji_path = (data_dir / "{:s}_emoji.txt".format(FLAGS.lang)).__str__()
 
     wv = np.load(wv_path, allow_pickle=True)
-    input_vec, input_label = np.load(X_path, allow_pickle=True), np.load(y_path, allow_pickle=True)
+    input_vec = np.load(X_path, allow_pickle=True)
+    input_label = np.load(y_path, allow_pickle=True)
 
     nb_tokens = len(wv)
     embed_dim = wv.shape[1]
@@ -61,6 +62,17 @@ def main(unused_argv):
     (X_val, y_val) = (input_vec[train_end:val_end], input_label[train_end:val_end])
     (X_test, y_test) = (input_vec[val_end:], input_label[val_end:])
 
+    if FLAGS.multilabel:
+        def to_multilabel(y):
+            outputs = []
+            for i in nb_classes:
+                outputs.append(y[:, i])
+            return outputs
+
+        y_train = to_multilabel(y_train)
+        y_val = to_multilabel(y_val)
+        y_test = to_multilabel(y_test)
+
     model = elsa_architecture(nb_classes=nb_classes,
                               nb_tokens=nb_tokens,
                               maxlen=maxlen,
@@ -69,20 +81,26 @@ def main(unused_argv):
                               load_embedding=True,
                               pre_embedding=wv,
                               high=FLAGS.highway,
-                              embed_dim=embed_dim)
+                              embed_dim=embed_dim,
+                              multilabel=FLAGS.multilabel)
 
     model.summary()
 
+    if FLAGS.multilabel:
+        loss = "binary_crossentropy"
+    else:
+        loss = "categorical_crossentropy"
+
     if FLAGS.optimizer == 'adam':
         adam = Adam(clipnorm=1, lr=FLAGS.lr)
-        model.compile(loss=FLAGS.loss, optimizer=adam, metrics=['accuracy'])
+        model.compile(loss=loss, optimizer=adam, metrics=['accuracy'])
     elif FLAGS.optimizer == 'rmsprop':
-        model.compile(loss=FLAGS.loss, optimizer='rmsprop', metrics=['accuracy'])
+        model.compile(loss=loss, optimizer='rmsprop', metrics=['accuracy'])
 
     checkpoint_dir = Path(FLAGS.checkpoint_dir)
     if not checkpoint_dir.exists():
         checkpoint_dir.mkdir()
-    checkpoint_weight_path = (checkpoint_dir / "elsa_sentence_{:s}.hdf5".format(FLAGS.lang)).__str__()
+    checkpoint_weight_path = (checkpoint_dir / "elsa_{:s}.hdf5".format(FLAGS.lang)).__str__()
 
     callbacks = [
         keras.callbacks.EarlyStopping(
@@ -98,15 +116,47 @@ def main(unused_argv):
               callbacks=callbacks,
               verbose=1)
 
-    _, acc = model.evaluate(X_test, y_test, batch_size=FLAGS.batch_size, verbose=0)
-    print(acc)
-
     freq = {line.split()[0]: int(line.split()[1]) for line in open(emoji_path).readlines()}
     freq_topn = sorted(freq.items(), key=itemgetter(1), reverse=True)[:nb_classes]
 
-    y_pred = model.predict(X_test)
-    print(classification_report(y_test.argmax(axis=1), y_pred.argmax(
-        axis=1), target_names=[e[0] for e in freq_topn]))
+    if FLAGS.multilabel:
+        from functools import reduce
+
+        def concat_flatten(x, y):
+            return np.concatenate([x.flatten(), y.flatten()])
+
+        y_pred = model.predict([X_test], batch_size=FLAGS.batch_size)
+        y_pred = [np.squeeze(p) for p in y_pred]
+
+        y_test_1d = np.array(y_test).flatten()
+        y_pred_1d = np.array(y_pred).flatten()
+        print(f1_score(y_test_1d, y_pred_1d > 0.5))
+        print(classification_report(y_test_1d, y_pred_1d > 0.5))
+
+        gold, pred = [], []
+        for i in range(len(X_test)):
+            each_gold, each_pred = [], []
+            for c in range(nb_classes):
+                if y_test[c][i] == 1.0:
+                    each_gold.append(c+1)
+                else:
+                    each_gold.append(0)
+                if y_pred[c][i] > 0.5:
+                    each_pred.append(c+1)
+                else:
+                    each_pred.append(0)
+            gold.extend(each_gold)
+            pred.extend(each_pred)
+
+        target_name = [""] + [e[0] for e in freq_topn]
+        print(classification_report(gold, pred, target_names=target_name))
+    else:
+        _, acc = model.evaluate(X_test, y_test, batch_size=FLAGS.batch_size, verbose=0)
+        print(acc)
+
+        y_pred = model.predict(X_test)
+        print(classification_report(y_test.argmax(axis=1), y_pred.argmax(
+            axis=1), target_names=[e[0] for e in freq_topn]))
 
 
 if __name__ == "__main__":

@@ -9,7 +9,8 @@ from model import elsa_architecture
 from pathlib import Path
 
 
-flags.DEFINE_string("corpus_prefix", default=None, help="corpus to encode")
+flags.DEFINE_string("input_path", default=None, help="data to encode")
+flags.DEFINE_string("s_lang", default="en", help="lang")
 flags.DEFINE_string("delimiter", default=",", help="delimiter of corpus")
 flags.DEFINE_string("weight_prefix", default=None, help="elsa model weight path")
 
@@ -22,7 +23,7 @@ flags.DEFINE_string("output_dir", default="./embed", help="directory contains pr
 
 flags.DEFINE_integer("nb_classes", default=64, help="")
 
-flags.mark_flags_as_required(["corpus_prefix", "weight_prefix"])
+flags.mark_flags_as_required(["input_path", "weight_prefix"])
 
 FLAGS = flags.FLAGS
 
@@ -37,7 +38,9 @@ def main(unused_argv):
     output_dir = Path(FLAGS.output_dir)
     if not output_dir.exists():
         output_dir.mkdir()
-    df = pd.read_csv(FLAGS.corpus_prefix + ".csv", delimiter=FLAGS.delimiter)
+
+    input_path = Path(FLAGS.input_path)
+    df = pd.read_csv(input_path.__str__(), delimiter=FLAGS.delimiter)
     s_lang, t_lang = df.columns[1], df.columns[2]
 
     for i, lang in enumerate((s_lang, t_lang)):
@@ -54,8 +57,9 @@ def main(unused_argv):
         vocab_path = data_dir / "{:s}_vocab.json".format(lang)
         vocab = json.load(open(vocab_path.__str__()))
 
-        output_X_path = output_dir / (Path(FLAGS.corpus_prefix).name + "_" + lang + "_X.npy").__str__()
-        output_y_path = output_dir / (Path(FLAGS.corpus_prefix).name + "_y.npy").__str__()
+        output_prefix = input_path.name[:input_path.name.rindex(".")]
+        output_X_path = (output_dir / (output_prefix + "_" + lang + "_X.npy")).__str__()
+        output_y_path = (output_dir / (output_prefix + "_y.npy")).__str__()
 
         model = elsa_architecture(nb_classes=FLAGS.nb_classes,
                                   nb_tokens=nb_tokens,
@@ -66,7 +70,8 @@ def main(unused_argv):
                                   test=True)
         model.load_weights(FLAGS.weight_prefix + "_" + lang + ".hdf5", by_name=True)
 
-        intermediate_layer_model = Model(inputs=model.input, outputs=model.get_layer('attlayer').output)
+        intermediate_layer_model = Model(
+            inputs=model.input, outputs=model.get_layer('attlayer').output)
         intermediate_layer_model.summary()
 
         def to_sequences(docs, vocab, maxlen):
@@ -82,7 +87,8 @@ def main(unused_argv):
                         else:
                             sent_sequence.append(1)  # UNKNOWN
                     doc_sequence.append(sent_sequence)
-                doc_sequence = tf.keras.preprocessing.sequence.pad_sequences(doc_sequence, maxlen=maxlen, padding="post", dtype="int32")
+                doc_sequence = tf.keras.preprocessing.sequence.pad_sequences(
+                    doc_sequence, maxlen=maxlen, padding="post", dtype="int32")
                 D.append(doc_sequence)
             return D
 

@@ -55,9 +55,10 @@ def assign_data_index_in_balance(train, val, test, indices_by_emoji, emoji_indic
 @click.argument("data_dir")
 @click.argument("lang")
 @click.option("--topn", "-n", default=64)
+@click.option("--label", type=click.Choice(["multi", "first", "most_common", "diverse_sampling"]), default="first")
 @click.option("--train_size", "-vs", default=0.7)
 @click.option("--test_size", "-ts", default=0.1)
-def main(data_dir, lang, topn, train_size, test_size):
+def main(data_dir, lang, topn, label, train_size, test_size):
 
     data_dir = Path(data_dir)
     input_path = (data_dir / "{:s}_tokens.txt".format(lang)).__str__()
@@ -69,7 +70,7 @@ def main(data_dir, lang, topn, train_size, test_size):
     token2index = json.loads(open(vocab_path, "r").read())
     # index2token = [item[0] for item in sorted(token2index.items(), key=itemgetter(1))]
 
-    def most_common_emoji(emoji_path, topn):
+    def get_emoji_topn(emoji_path, topn):
         freq = {line.split()[0]: int(line.split()[1]) for line in open(emoji_path).readlines()}
         freq_topn = sorted(freq.items(), key=itemgetter(1), reverse=True)[:topn]
         emoji_topn = [token2index[freq[0]] for freq in freq_topn]
@@ -84,7 +85,7 @@ def main(data_dir, lang, topn, train_size, test_size):
                 tokens_as_id.append(SPECIAL_TOKENS.index("CUSTOM_UNKNOWN"))
         return tokens_as_id
 
-    emoji_topn = most_common_emoji(emoji_path, topn=topn)
+    emoji_topn = get_emoji_topn(emoji_path, topn=topn)
 
     # filter out of topn emoji sentences
     with open(input_path, "r") as fi:
@@ -101,8 +102,6 @@ def main(data_dir, lang, topn, train_size, test_size):
     y = []
     # single emoji data index
     indices_by_emoji1 = defaultdict(list)
-    # multiple emoji data index
-    #indices_by_emoji2, emoji2_indices = defaultdict(list), set()
     for i, id_tokens in enumerate(tidy_data):
         each_y = np.zeros(topn)
         emoji_index_set = set()
@@ -110,17 +109,16 @@ def main(data_dir, lang, topn, train_size, test_size):
             try:
                 emoji_index = emoji_topn.index(token_id)
                 emoji_index_set.add(emoji_index)
-                break
+                if label == "first":
+                    break
             except ValueError:
                 continue
 
         id_tokens = [t for t in id_tokens if t not in emoji_topn]
         X[i, :len(id_tokens)] = id_tokens[:min(maxlen, len(id_tokens))]
 
-        if len(emoji_index_set) == 1:
-            indices_by_emoji1[emoji_index].append(i)
-            each_y[emoji_index] = 1
-        else:
+        if label == "diverse_sampling":
+            # pick min doc freq emoji ever
             min_index, min_count = -1, sys.maxsize
             for emoji_index in emoji_index_set:
                 n_indices = len(indices_by_emoji1[emoji_index])
@@ -129,8 +127,14 @@ def main(data_dir, lang, topn, train_size, test_size):
                     min_count = n_indices
             indices_by_emoji1[min_index].append(i)
             each_y[min_index] = 1
-                #indices_by_emoji2[emoji_index].append(i)
-            #emoji2_indices.add(i)
+        elif label == "most_common":
+            most_common_emoji_index = emoji_topn[min(emoji_topn.index[emoji_index] for emoji_index in emoji_index_set)]
+            each_y[most_common_emoji_index] = 1
+            indices_by_emoji1[most_common_emoji_index].append(i)
+        else:  # multi, all
+            for emoji_index in emoji_index_set:
+                each_y[emoji_index] = 1
+                indices_by_emoji1[emoji_index].append(i)
 
         y.append(each_y)
 
