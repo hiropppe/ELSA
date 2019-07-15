@@ -46,6 +46,7 @@ class JsonSentenceGenerator():
 @click.option('--hs', default=0, help='If 1, hierarchical softmax will be used for model training. If 0, and negative is non-zero, negative sampling will be used.')
 @click.option('--negative', default=20, help='If > 0, negative sampling will be used, the int for negative specifies how many “noise words” should be drawn (usually between 5-20). If set to 0, no negative sampling is used.')
 @click.option('--workers', default=None, help='Use these many worker threads to train the model (=faster training with multicore machines).')
+@click.option('--save_model/--no_save_model', is_flag=True, default=False, help="save full word2vec model or not")
 def main(data_dir,
          lang,
          json_input,
@@ -55,7 +56,8 @@ def main(data_dir,
          size,
          hs,
          negative,
-         workers):
+         workers,
+         save_model):
     logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=logging.INFO)
 
     workers = workers if workers else multiprocessing.cpu_count() - 1
@@ -93,7 +95,8 @@ def main(data_dir,
                                   workers=workers)
 
     model.init_sims(replace=True)
-    model.save(model_out)
+    if save_model:
+        model.save(model_out)
     model.wv.save_word2vec_format(wv_out, binary=False)
 
 

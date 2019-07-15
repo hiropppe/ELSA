@@ -29,26 +29,10 @@ def calculate_batchsize_maxlen(texts):
     lengths = [len(t) for t in texts]
     maxlen = roundup(np.percentile(lengths, 80.0))
     batch_size = 250 if maxlen <= 100 else 50
-    print("mean: ", np.mean(lengths), "median: ", np.median(lengths), len(lengths), "avg: ", np.average(lengths))
-    print("batch_size: ", batch_size, "maxlen:", maxlen)
+    print("mean: {:.3f} median: {:.3f} avg: {:.3f}".format(
+        np.mean(lengths), np.median(lengths), np.average(lengths)))
+    print("batch_size: {:d} maxlen: {:d}".format(batch_size, maxlen))
     return batch_size, maxlen
-
-
-def assign_data_index_in_balance(train, val, test, indices_by_emoji, emoji_indices, topn):
-    sample_holds = [train, val, test]
-    n = 0
-    pbar = tqdm()
-    while emoji_indices:
-        emoji_index = topn - n % topn - 1
-        sample_indices = indices_by_emoji[emoji_index]
-        for hold in sample_holds:
-            if sample_indices:
-                sample_index = sample_indices.pop()
-                if sample_index in emoji_indices:
-                    hold.append(sample_index)
-                    emoji_indices.remove(sample_index)
-        n += 1
-        pbar.update()
 
 
 @click.command()
@@ -100,7 +84,6 @@ def main(data_dir, lang, topn, label, train_size, test_size):
 
     X = np.zeros((len(tidy_data), maxlen), dtype='uint32')
     y = []
-    # single emoji data index
     indices_by_emoji1 = defaultdict(list)
     for i, id_tokens in enumerate(tidy_data):
         each_y = np.zeros(topn)
@@ -128,7 +111,8 @@ def main(data_dir, lang, topn, label, train_size, test_size):
             indices_by_emoji1[min_index].append(i)
             each_y[min_index] = 1
         elif label == "most_common":
-            most_common_emoji_index = emoji_topn[min(emoji_topn.index[emoji_index] for emoji_index in emoji_index_set)]
+            most_common_emoji_index = emoji_topn[min(
+                emoji_topn.index[emoji_index] for emoji_index in emoji_index_set)]
             each_y[most_common_emoji_index] = 1
             indices_by_emoji1[most_common_emoji_index].append(i)
         else:  # multi, all
@@ -138,9 +122,8 @@ def main(data_dir, lang, topn, label, train_size, test_size):
 
         y.append(each_y)
 
-    for i in range(topn):
-        print(i, len(indices_by_emoji1[i]))
-        #print(i, index2token[emoji_topn[i]], len(indices_by_emoji1[i]), len(indices_by_emoji2[i]))
+    # for i in range(topn):
+    #    print(i, len(indices_by_emoji1[i]))
 
     tidy_data.clear()
 
@@ -153,9 +136,6 @@ def main(data_dir, lang, topn, label, train_size, test_size):
         val += sample_indices[int(sample_length*train_size):int(sample_length*(train_size+val_size))]
         test += sample_indices[int(sample_length*(train_size+val_size)):]
 
-    # assing multiple emoji (topn co-occured) indices in balance
-    #assign_data_index_in_balance(train, val, test, indices_by_emoji2, emoji2_indices, topn)
-
     np.random.shuffle(train)
     np.random.shuffle(val)
     np.random.shuffle(test)
@@ -166,7 +146,7 @@ def main(data_dir, lang, topn, label, train_size, test_size):
     for index in total:
         filtered_X.append(X[index])
         filtered_y.append(y[index])
-    print(len(filtered_y), len(filtered_X))
+    print("Total {:d} samples".format(len(total)))
 
     X = np.array(filtered_X, dtype=np.uint32)
     y = np.array(filtered_y, dtype=np.uint32)

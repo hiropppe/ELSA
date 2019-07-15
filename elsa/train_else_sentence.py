@@ -9,13 +9,14 @@ from pathlib import Path
 from operator import itemgetter
 from keras.optimizers import Adam
 from sklearn.metrics import classification_report, recall_score, precision_score, f1_score
+from sklearn.utils import class_weight
 
 
 flags.DEFINE_string("lang", default=None, help="lang to train")
 
 flags.DEFINE_integer("batch_size", default=250, help="batch size")
 flags.DEFINE_string("optimizer", default="adam", help="optimizer")
-flags.DEFINE_float("lr", default=3e-4, help="learning rate")
+flags.DEFINE_float("lr", default=1e-3, help="learning rate")
 flags.DEFINE_string("loss", default="categorical_crossentropy", help="loss")
 flags.DEFINE_integer("epochs", default=100, help="max epochs")
 flags.DEFINE_integer("patience", default=3, help="number of patience epochs for early stopping")
@@ -27,6 +28,7 @@ flags.DEFINE_float("lstm_drop", default=0.5, help="")
 flags.DEFINE_float("final_drop", default=0.5, help="")
 flags.DEFINE_float("embed_drop", default=0.0, help="")
 flags.DEFINE_bool("highway", default=False, help="")
+flags.DEFINE_bool("compute_class_weight", default=False, help="")
 flags.DEFINE_bool("multilabel", default=False, help="")
 
 flags.mark_flags_as_required(["lang"])
@@ -83,13 +85,21 @@ def main(unused_argv):
                               high=FLAGS.highway,
                               embed_dim=embed_dim,
                               multilabel=FLAGS.multilabel)
-
     model.summary()
+
+    computed_class_weight = None
 
     if FLAGS.multilabel:
         loss = "binary_crossentropy"
     else:
         loss = "categorical_crossentropy"
+        if FLAGS.compute_class_weight:
+            y_train_sps = []
+            for row in y_train:
+                y_train_sps.extend(np.where(row)[0].tolist())
+            computed_class_weight = class_weight.compute_class_weight(
+                'balanced', list(range(nb_classes)), y_train_sps)
+            print("computed class weight = {:s}".format(str(computed_class_weight)))
 
     if FLAGS.optimizer == 'adam':
         adam = Adam(clipnorm=1, lr=FLAGS.lr)
@@ -113,6 +123,7 @@ def main(unused_argv):
               batch_size=FLAGS.batch_size,
               epochs=FLAGS.epochs,
               validation_data=(X_val, y_val),
+              class_weight=computed_class_weight,
               callbacks=callbacks,
               verbose=1)
 

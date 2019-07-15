@@ -15,7 +15,6 @@ CRLF_RE = re.compile(r'[\s\u3000]+')
 RETWEET_RE = re.compile(r'^[rR][tT]')
 HASHING_RE = re.compile(r'#[^\s]+')
 MENTION_RE = re.compile(r'@[a-zA-Z0-9_]+:?')
-#URL_RE = re.compile(r'(?:https?://|www\.)(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+')
 URL_RE = re.compile(
     r'(?:url\s*)?(?:https?://|\w*\.\w+\.\w+)(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\)…,]|[\u4E00-\u9FD0]|[あ-ん]|[\u30A1-\u30F4]|(?:%[0-9a-fA-F][0-9a-fA-F]))+')
 TWEETLINK_RE = re.compile(r't.co/[a-zA-Z0-9]+')

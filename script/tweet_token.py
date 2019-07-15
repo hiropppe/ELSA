@@ -9,12 +9,13 @@ from word_generator import TweetWordGenerator
 
 @click.command()
 @click.argument("input_path")
-@click.argument("output_dir")
+@click.argument("data_dir")
 @click.argument("lang")
 @click.option("--processes", "-w", default=os.cpu_count()-1, help="")
-def main(input_path, output_dir, lang, processes):
-    token_output = Path(output_dir).joinpath('{:s}_tokens.txt'.format(lang)).as_posix()
-    emoji_output = Path(output_dir).joinpath('{:s}_emoji.txt'.format(lang)).as_posix()
+def main(input_path, data_dir, lang, processes):
+    data_dir = Path(data_dir)
+    token_output = (data_dir / '{:s}_tokens.txt'.format(lang)).__str__()
+    emoji_output = (data_dir / '{:s}_emoji.txt'.format(lang)).__str__()
 
     emoji_unicodes = json.loads(open("./emoji_unicode", "r").read()).keys()
 
@@ -35,7 +36,8 @@ def main(input_path, output_dir, lang, processes):
             n_emoji_sents += emoji_sent
             print(' '.join(tokens), file=fot)
 
-    print(n_sents, n_emoji, n_emoji_sents, float(n_emoji_sents)/n_sents)
+    print("{:d} sents {:d} emojis {:d}({:.3f}%) emoji_sents".format(
+        n_sents, n_emoji, n_emoji_sents, float(n_emoji_sents)*100/n_sents))
 
     with open(emoji_output, "w") as foe:
         for token, freq in emoji_freq.most_common(n=len(emoji_freq)):
