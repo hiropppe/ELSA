@@ -29,7 +29,7 @@ flags.DEFINE_integer("patience", default=3, help="number of patience epochs for 
 flags.DEFINE_integer("hidden_dim", default=64, help="")
 flags.DEFINE_float("drop", default=0.5, help="")
 
-flags.DEFINE_string("mode", default="train", help="")
+flags.DEFINE_bool("test", default=False, help="")
 
 FLAGS = flags.FLAGS
 
@@ -54,15 +54,15 @@ def main(unused_argv):
 
     model = elsa_doc_model(hidden_dim=FLAGS.hidden_dim,
                            dropout=FLAGS.drop,
-                           mode=FLAGS.mode,
-                           nb_maxlen=[FLAGS.t_maxlen, FLAGS.s_maxlen])
+                           nb_maxlen=[FLAGS.t_maxlen, FLAGS.s_maxlen],
+                           test=FLAGS.test)
     model.summary()
 
     checkpoint_dir = Path(FLAGS.checkpoint_dir)
     if not checkpoint_dir.exists():
         checkpoint_dir.mkdir()
     checkpoint_weight_path = (
-        checkpoint_dir / "elsa_doc_{:s}_{:s}.hdf5".format(FLAGS.s_lang, FLAGS.t_lang)).__str__()
+        checkpoint_dir / "elsa_{:s}_{:s}.hdf5".format(FLAGS.s_lang, FLAGS.t_lang)).__str__()
 
     if FLAGS.mode == "train":
         callbacks = [

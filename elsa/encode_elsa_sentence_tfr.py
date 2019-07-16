@@ -21,10 +21,11 @@ flags.DEFINE_string("t_weight", default=None, help="elsa model weight path")
 flags.DEFINE_integer("s_maxlen", default=20, help="max sequence length")
 flags.DEFINE_integer("t_maxlen", default=50, help="max sequence length")
 flags.DEFINE_integer("batch_size", default=250, help="batch size")
-
-flags.DEFINE_string("data_dir", default="/data/elsa", help="directory contains preprocessed data")
-
 flags.DEFINE_integer("nb_classes", default=64, help="")
+flags.DEFINE_float("val_size", default=0.2, help="")
+flags.DEFINE_integer("random_state", default=123, help="")
+flags.DEFINE_string("data_dir", default="/data/elsa", help="directory contains preprocessed data")
+flags.DEFINE_string("embed_dir", default=None, help="directory to output encoded data")
 
 flags.mark_flags_as_required(["data", "s_weight", "t_weight"])
 
@@ -49,15 +50,15 @@ def main(unused_argv):
     nb_tokens = {}
     embed_dim = {}
     vocab = {}
-    model = {}
+    encoder = {}
     for lang in langs:
-        wv_path = (data_dir / "{:s}_wv.npy".format(langs[lang])).__str__()
-        wv[lang] = np.load(wv_path)
-        nb_tokens[lang] = len(wv)
-        embed_dim[lang] = wv.shape[1]
+        wv_path = data_dir / "{:s}_wv.npy".format(lang)
+        wv[lang] = np.load(wv_path.__str__())
+        nb_tokens[lang] = len(wv[lang])
+        embed_dim[lang] = wv[lang].shape[1]
 
-        vocab_path = data_dir / "{:s}_vocab.json".format(langs[lang])
-        vocab[langs[lang]] = json.load(open(vocab_path.__str__()))
+        vocab_path = data_dir / "{:s}_vocab.json".format(lang)
+        vocab[lang] = json.load(open(vocab_path.__str__()))
 
         model = elsa_architecture(nb_classes=FLAGS.nb_classes,
                                   nb_tokens=nb_tokens[lang],
@@ -66,14 +67,14 @@ def main(unused_argv):
                                   feature_output=False,
                                   return_attention=False,
                                   test=True)
-        model.load_weights(weight, by_name=True)
+        model.load_weights(weight[lang], by_name=True)
 
         intermediate_layer_model = Model(
             inputs=model.input, outputs=model.get_layer('attlayer').output)
         intermediate_layer_model.summary()
-        model[lang] = intermediate_layer_model
+        encoder[lang] = intermediate_layer_model
 
-    def get_elsa_input(json_doc, vocab, maxlen):
+    def get_encoder_input(json_doc, vocab, maxlen):
         doc = json.loads(json_doc)
         doc_sequence = []
         for sent in doc:
@@ -88,28 +89,50 @@ def main(unused_argv):
             doc_sequence, maxlen=maxlen, padding="post", dtype="int32")
         return doc_sequence
 
-    def serialize_example(elsa_src, elsa_tgt, label):
-        elsa_src = pad_sequences([elsa_src], dtype=elsa_src.dtype, maxlen=maxlen[s_lang])
-        elsa_tgt = pad_sequences([elsa_tgt], dtype=elsa_tgt.dtype, maxlen=maxlen(t_lang))
+    def serialize_example(src, tgt, label):
+        src = pad_sequences([src], dtype=src.dtype, maxlen=maxlen[s_lang])
+        tgt = pad_sequences([tgt], dtype=tgt.dtype, maxlen=maxlen[t_lang])
         feature = {
-            "src":   tf.train.Feature(float_list=tf.train.FloatList(value=elsa_src.flatten())),
-            "tgt":   tf.train.Feature(float_list=tf.train.FloatList(value=elsa_tgt.flatten())),
+            "src":   tf.train.Feature(float_list=tf.train.FloatList(value=src.flatten())),
+            "tgt":   tf.train.Feature(float_list=tf.train.FloatList(value=tgt.flatten())),
             "label":  tf.train.Feature(int64_list=tf.train.Int64List(value=[label])),
         }
         example = tf.train.Example(features=tf.train.Features(feature=feature))
         return example.SerializeToString()
 
-    record_path = data_dir / (data.name[:data.name.rindex(".")] + ".tfrecord").__str__()
-    with tf.python_io.TFRecordWriter(record_path) as writer:
-        for row in tqdm(df.iterrows()):
-            cols = row[1]
-            doc = [cols[s_lang], cols[t_lang]]
-            elsa_out = {}
-            for lang in langs:
-                elsa_inp = get_elsa_input(doc[lang], vocab[lang], maxlen[lang])
-                elsa_out[lang] = intermediate_layer_model.predict(elsa_inp)
-            example = serialize_example(elsa_out[s_lang], elsa_out[t_lang], cols.label)
-            writer.write(example)
+    def encode(df, data_suffix=None):
+        data_name = data.name[:data.name.rindex(".")]
+        if data_suffix:
+            data_name += "." + data_suffix
+        if FLAGS.embed_dir:
+            record_path = Path(FLAGS.embed_dir) / (data_name + ".tfrecord")
+        else:
+            record_path = data_dir / (data_name + ".tfrecord")
+
+        with tf.io.TFRecordWriter(record_path.__str__()) as writer:
+            pbar = tqdm(total=len(df))
+            for row in df.iterrows():
+                cols = row[1]
+                doc = {s_lang: cols[s_lang], t_lang: cols[t_lang]}
+                enc_out = {}
+                for lang in langs:
+                    enc_inp = get_encoder_input(doc[lang], vocab[lang], maxlen[lang])
+                    enc_out[lang] = encoder[lang].predict(enc_inp)
+                example = serialize_example(enc_out[s_lang], enc_out[t_lang], cols.label)
+                writer.write(example)
+                pbar.update(n=1)
+
+    if FLAGS.val_size:
+        if FLAGS.random_state:
+            np.random.seed(FLAGS.random_state)
+        data_len = len(df)
+        indices = np.random.permutation(data_len)
+        train_indices = indices[int(data_len * FLAGS.val_size):]
+        val_indices = indices[:int(data_len * FLAGS.val_size)]
+        encode(df.iloc[train_indices], data_suffix="train")
+        encode(df.iloc[val_indices], data_suffix="valid")
+    else:
+        encode(df)
 
 
 if __name__ == "__main__":

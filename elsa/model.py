@@ -129,16 +129,16 @@ def elsa_architecture(nb_classes,
 
 def elsa_doc_model(hidden_dim=64,
                    dropout=0.5,
-                   mode='train',
                    nb_maxlen=[20, 20],
-                   nb_feature=[2248, 2248]):
+                   nb_feature=[2248, 2248],
+                   test=False):
     I_en = Input(shape=(nb_maxlen[0], nb_feature[1]), dtype='float32')
     en_out = AttentionWeightedAverage()(I_en)
     I_ot = Input(shape=(nb_maxlen[1], nb_feature[0]), dtype='float32')
     jp_out = AttentionWeightedAverage()(I_ot)
     O_to = concatenate([jp_out, en_out])
     O_to = Dense(hidden_dim, activation='selu')(O_to)
-    if mode == 'train':
+    if not test:
         O_to = Dropout(dropout)(O_to)
     O_out = Dense(1, activation='sigmoid', name='softmax')(O_to)
     model = Model(inputs=[I_ot, I_en], outputs=O_out)
