@@ -111,8 +111,7 @@ def main(data_dir, lang, topn, label, train_size, test_size):
             indices_by_emoji1[min_index].append(i)
             each_y[min_index] = 1
         elif label == "most_common":
-            most_common_emoji_index = emoji_topn[min(
-                emoji_topn.index[emoji_index] for emoji_index in emoji_index_set)]
+            most_common_emoji_index = min(emoji_index_set)
             each_y[most_common_emoji_index] = 1
             indices_by_emoji1[most_common_emoji_index].append(i)
         else:  # multi, all
