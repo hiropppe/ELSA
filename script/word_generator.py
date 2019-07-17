@@ -49,7 +49,6 @@ ALLOWED_CONVERTED_UNICODE_PUNCTUATION = """!"#$'()+,-.:;<=>?@`~"""
 
 class StanfordTokenizer():
     def __init__(self, lang, model_dir, processors='tokenize,mwt,pos,lemma'):
-        os.environ['CUDA_VISIBLE_DEVICES'] = "3"
         self.nlp = stanfordnlp.Pipeline(processors=processors,
                                         models_dir=model_dir,
                                         lang=lang)

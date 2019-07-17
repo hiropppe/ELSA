@@ -67,7 +67,7 @@ def main(unused_argv):
     if FLAGS.multilabel:
         def to_multilabel(y):
             outputs = []
-            for i in nb_classes:
+            for i in range(nb_classes):
                 outputs.append(y[:, i])
             return outputs
 

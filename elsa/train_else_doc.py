@@ -22,7 +22,7 @@ flags.DEFINE_string("optimizer", default="adam", help="optimizer")
 flags.DEFINE_float("lr", default=3e-4, help="learning rate")
 flags.DEFINE_integer("epochs", default=100, help="max epochs")
 flags.DEFINE_integer("batch_size", default=32, help="batch size")
-flags.DEFINE_float("validation_split", default=0.2, help="")
+flags.DEFINE_float("validation_split", default=0.1, help="")
 flags.DEFINE_string("checkpoint_dir", default="./ckpt", help="")
 flags.DEFINE_integer("patience", default=3, help="number of patience epochs for early stopping")
 
@@ -64,7 +64,7 @@ def main(unused_argv):
     checkpoint_weight_path = (
         checkpoint_dir / "elsa_{:s}_{:s}.hdf5".format(FLAGS.s_lang, FLAGS.t_lang)).__str__()
 
-    if FLAGS.mode == "train":
+    if not FLAGS.test:
         callbacks = [
             keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0,
                                           patience=5, verbose=0, mode='auto'),
