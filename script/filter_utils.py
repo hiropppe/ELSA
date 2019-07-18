@@ -133,9 +133,14 @@ def separate_emojis_and_text(text):
     return ''.join(emoji_chars), ''.join(non_emoji_chars)
 
 
-def extract_emojis(text, wanted_emojis):
-    text = remove_variation_selectors(text)
-    return [c for c in text if c in wanted_emojis]
+def extract_emojis(text, emojis_in_len_decending_order):
+    #text = remove_variation_selectors(text)
+    emoji_set = set()
+    for e in emojis_in_len_decending_order:
+        if e in text:
+            emoji_set.add(e)
+            text = text.replace(e, " ")
+    return text, list(emoji_set)
 
 
 def remove_variation_selectors(text):

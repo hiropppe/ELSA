@@ -1,5 +1,6 @@
 import numpy as np
 import json
+import os
 import pandas as pd
 import tensorflow as tf
 
@@ -7,6 +8,7 @@ from absl import flags
 from keras.models import Model
 from model import elsa_architecture
 from pathlib import Path
+from tqdm import tqdm
 
 
 flags.DEFINE_string("data", default=None, help="data to encode")
@@ -17,12 +19,12 @@ flags.DEFINE_string("s_weight", default=None, help="elsa model weight path")
 flags.DEFINE_string("t_weight", default=None, help="elsa model weight path")
 flags.DEFINE_integer("s_maxlen", default=20, help="max sequence length")
 flags.DEFINE_integer("t_maxlen", default=50, help="max sequence length")
+flags.DEFINE_integer("nb_classes", default=64, help="")
 flags.DEFINE_integer("batch_size", default=250, help="batch size")
 flags.DEFINE_integer("patience", default=3, help="number of patience epochs for early stopping")
 flags.DEFINE_string("data_dir", default="/data/elsa", help="directory contains preprocessed data")
 flags.DEFINE_string("embed_dir", default="./embed", help="directory contains preprocessed data")
-
-flags.DEFINE_integer("nb_classes", default=64, help="")
+flags.DEFINE_bool("h5", default=False, help="save using hdf5") 
 
 flags.mark_flags_as_required(["data", "s_weight", "t_weight"])
 
@@ -47,6 +49,14 @@ def main(unused_argv):
     weight = {s_lang: FLAGS.s_weight, t_lang: FLAGS.t_weight}
     maxlen = {s_lang: FLAGS.s_maxlen, t_lang: FLAGS.t_maxlen}
 
+    output_prefix = data.name[:data.name.rindex(".")]
+
+    if FLAGS.h5:
+        import h5py as h5
+        output_path = embed_dir / (output_prefix + ".hdf5")
+        tmp_output_path = embed_dir / (".tmp." + output_prefix + ".hdf5")
+        h5f = h5.File(tmp_output_path.__str__())
+
     for i, lang in enumerate((s_lang, t_lang)):
         wv_path = (data_dir / "{:s}_wv.npy".format(lang)).__str__()
         wv = np.load(wv_path)
@@ -55,10 +65,6 @@ def main(unused_argv):
 
         vocab_path = data_dir / "{:s}_vocab.json".format(lang)
         vocab = json.load(open(vocab_path.__str__()))
-
-        output_prefix = data.name[:data.name.rindex(".")]
-        output_X_path = (embed_dir / (output_prefix + "_" + lang + "_X.npy")).__str__()
-        output_y_path = (embed_dir / (output_prefix + "_y.npy")).__str__()
 
         model = elsa_architecture(nb_classes=FLAGS.nb_classes,
                                   nb_tokens=nb_tokens,
@@ -93,14 +99,39 @@ def main(unused_argv):
 
         D = to_sequences(df[lang].values, vocab, maxlen[lang])
 
-        encoded_D = []
-        for inp in D:
-            out = intermediate_layer_model.predict(inp, batch_size=FLAGS.batch_size)
-            encoded_D.append(out)
-        np.save(output_X_path, encoded_D)
+        if FLAGS.h5:
+            for j, inp in tqdm(enumerate(D)):
+                out = intermediate_layer_model.predict(inp, batch_size=FLAGS.batch_size)
+                out = tf.keras.preprocessing.sequence.pad_sequences(
+                    [out], maxlen=maxlen[lang], dtype=out.dtype)[0]
+                if j == 0:
+                    depth = out.shape[1]
+                    dataset = h5f.require_dataset(
+                            lang,
+                            dtype=out.dtype,
+                            shape=(1, maxlen[lang], depth),
+                            maxshape=(None, maxlen[lang], depth),  # 'None' == arbitrary size
+                            exact=False,
+                            chunks=(32, maxlen[lang], depth),
+                            compression="lzf")
+                if j >= len(dataset):
+                    dataset.resize((j+1, maxlen[lang], depth))
+                dataset[j] = out
+        else:
+            output_X_path = (embed_dir / (output_prefix + "_" + lang + "_X.npy")).__str__()
+            encoded_D = []
+            for inp in tqdm(D):
+                out = intermediate_layer_model.predict(inp)
+                encoded_D.append(out)
+            np.save(output_X_path, encoded_D)
 
-    # save label
-    np.save(output_y_path, df["label"].values)
+    if FLAGS.h5:
+        h5f.create_dataset("label", data=df["label"].values)
+        h5f.close()
+        os.rename(tmp_output_path.__str__(), output_path.__str__())
+    else:
+        output_y_path = (embed_dir / (output_prefix + "_y.npy")).__str__()
+        np.save(output_y_path, df["label"].values)
 
 
 if __name__ == "__main__":

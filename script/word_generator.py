@@ -31,6 +31,7 @@ from filter_utils import (
     separate_emojis_and_text)
 from functools import partial
 from nltk.tokenize.casual import TweetTokenizer
+from operator import itemgetter
 from tqdm import tqdm
 
 SPACE_RE = re.compile(r'[\s\u3000]+')
@@ -324,7 +325,7 @@ class TweetWordGenerator(WordGenerator):
     def __init__(self,
                  file_path,
                  lang,
-                 wanted_emojis=None,
+                 emojis=None,
                  english_words=None,
                  norm_unicode_text=True,
                  allow_unicode_text=True,
@@ -334,7 +335,9 @@ class TweetWordGenerator(WordGenerator):
                  processes=1,
                  chunksize=100):
 
-        self.wanted_emojis = wanted_emojis
+        emojis_len = [(e, len(e)) for e in emojis]
+        emojis_len_decending = [e[0] for e in sorted(emojis_len, key=itemgetter(1), reverse=True)]
+        self.emojis = emojis_len_decending
         self.english_words = english_words
         self.ignore_retweets = ignore_retweets
         self.ignore_url_tweets = ignore_url_tweets
@@ -354,27 +357,22 @@ class TweetWordGenerator(WordGenerator):
         # If it passes all checks, then the tweet is validated for usage
 
         if self.ignore_retweets and RETWEET_RE.search(text):
-            return False, []
+            return False
 
         if self.ignore_url_tweets and URLS_RE.search(text):
-            return False, []
+            return False
 
         if self.ignore_mention_tweets and MENTION_RE.search(text):
-            return False, []
+            return False
 
-        if self.wanted_emojis is not None:
-            uniq_emojis = np.unique(extract_emojis(text, self.wanted_emojis))
-            if len(uniq_emojis) == 0:
-                return False, []
-        else:
-            uniq_emojis = []
-
-        return True, uniq_emojis
+        return True
 
     def data_preprocess_filtering(self, line, iter_i):
         text = line.strip()
-        valid, emojis = self.validated_tweet(text)
+        valid = self.validated_tweet(text)
         if valid:
+            text, emojis = extract_emojis(text, self.emojis)
+
             text = MENTION_RE.sub('', text)
             text = RETWEET_RE.sub('', text)
             text = URLS_RE.sub('', text)
@@ -383,6 +381,7 @@ class TweetWordGenerator(WordGenerator):
             text = text.strip()
         else:
             text = ''
+            emojis = []
         return valid, text, {'emojis': emojis}
 
     def data_postprocess_filtering(self, words, iter_i):
