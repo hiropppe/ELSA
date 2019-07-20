@@ -36,8 +36,7 @@ FLAGS = flags.FLAGS
 class TFRecordGenerator():
 
     def __init__(self, data_path, batch_size=32, s_maxlen=20, t_maxlen=20):
-        # self.dataset = tf.data.TFRecordDataset([data_path])
-        self.data_path = data_path
+        self.dataset = tf.data.TFRecordDataset([data_path])
         self.batch_size = batch_size
         self.s_maxlen = s_maxlen
         self.t_maxlen = t_maxlen
