@@ -13,15 +13,12 @@ from tqdm import tqdm
 
 flags.DEFINE_string("data", default=None, help="data to encode")
 flags.DEFINE_string("delimiter", default=",", help="delimiter of corpus")
-flags.DEFINE_string("s_lang", default="en", help="lang")
-flags.DEFINE_string("t_lang", default="ja", help="lang")
 flags.DEFINE_string("s_weight", default=None, help="elsa model weight path")
 flags.DEFINE_string("t_weight", default=None, help="elsa model weight path")
 flags.DEFINE_integer("s_maxlen", default=20, help="max sequence length")
 flags.DEFINE_integer("t_maxlen", default=50, help="max sequence length")
 flags.DEFINE_integer("nb_classes", default=64, help="")
 flags.DEFINE_integer("batch_size", default=250, help="batch size")
-flags.DEFINE_integer("patience", default=3, help="number of patience epochs for early stopping")
 flags.DEFINE_string("data_dir", default="/data/elsa", help="directory contains preprocessed data")
 flags.DEFINE_string("embed_dir", default="./embed", help="directory contains preprocessed data")
 flags.DEFINE_bool("h5", default=False, help="save using hdf5") 
@@ -56,6 +53,8 @@ def main(unused_argv):
         output_path = embed_dir / (output_prefix + ".hdf5")
         tmp_output_path = embed_dir / (".tmp." + output_prefix + ".hdf5")
         h5f = h5.File(tmp_output_path.__str__())
+    else:
+        embed = {}
 
     for i, lang in enumerate((s_lang, t_lang)):
         wv_path = (data_dir / "{:s}_wv.npy".format(lang)).__str__()
@@ -118,20 +117,22 @@ def main(unused_argv):
                     dataset.resize((j+1, maxlen[lang], depth))
                 dataset[j] = out
         else:
-            output_X_path = (embed_dir / (output_prefix + "_" + lang + "_X.npy")).__str__()
+            #output_X_path = (embed_dir / (output_prefix + "_" + lang + "_X.npy")).__str__()
             encoded_D = []
             for inp in tqdm(D):
                 out = intermediate_layer_model.predict(inp)
                 encoded_D.append(out)
-            np.save(output_X_path, encoded_D)
+            embed[lang] = encoded_D
+            #np.save(output_X_path, encoded_D)
 
     if FLAGS.h5:
         h5f.create_dataset("label", data=df["label"].values)
         h5f.close()
         os.rename(tmp_output_path.__str__(), output_path.__str__())
     else:
-        output_y_path = (embed_dir / (output_prefix + "_y.npy")).__str__()
-        np.save(output_y_path, df["label"].values)
+        #output_y_path = (embed_dir / (output_prefix + "_y.npy")).__str__()
+        np.savez(output_path, s_lang=embed[s_lang], t_lang=embed[t_lang], label=df["label"].values)
+        #np.save(output_y_path, df["label"].values)
 
 
 if __name__ == "__main__":

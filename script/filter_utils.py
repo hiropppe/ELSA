@@ -5,6 +5,8 @@ import numpy as np
 import re
 import string
 import emoji
+
+from operator import itemgetter
 from tokens import RE_MENTION, RE_URL
 from itertools import groupby
 
@@ -23,6 +25,8 @@ SPECIAL_TOKENS = [
     "CUSTOM_BLANK_8",
     "CUSTOM_BLANK_9",
 ]
+
+EMOJI_PH = "<EMOJI>"
 
 # from http://bit.ly/2rdjgjE (UTF-8 encodings and Unicode chars)
 VARIATION_SELECTORS = ['\ufe00',
@@ -134,13 +138,25 @@ def separate_emojis_and_text(text):
 
 
 def extract_emojis(text, emojis_in_len_decending_order):
-    #text = remove_variation_selectors(text)
-    emoji_set = set()
+    text = remove_variation_selectors(text)
+    emoji_offset = []
     for e in emojis_in_len_decending_order:
         if e in text:
-            emoji_set.add(e)
-            text = text.replace(e, " ")
-    return text, list(emoji_set)
+            while True:
+                offset = text.find(e)
+                if offset == -1:
+                    break
+                text = text.replace(e, EMOJI_PH, 1)
+                emoji_offset.append((e, offset))
+    if emoji_offset:
+        emojis = [e[0] for e in sorted(emoji_offset, key=itemgetter(0))]
+    else:
+        emojis = []
+    assert text.count(EMOJI_PH) == len(
+        emojis), "emoji extraction error.\n{:s} for {:s}".format(str(emojis), text)
+    # print(text)
+    # print(emojis)
+    return text, emojis
 
 
 def remove_variation_selectors(text):
@@ -157,12 +173,12 @@ def shorten_word(word):
     """
 
     # only shorten ASCII words
-    isascii = lambda s: len(s) == len(s.encode())
+    def isascii(s): return len(s) == len(s.encode())
     if not isascii:
         return word
-    #try:
+    # try:
     #    word.decode('ascii')
-    #except (UnicodeDecodeError, UnicodeEncodeError) as e:
+    # except (UnicodeDecodeError, UnicodeEncodeError) as e:
     #    return word
 
     # must have at least 3 char to be shortened

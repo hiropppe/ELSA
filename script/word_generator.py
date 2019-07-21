@@ -28,7 +28,8 @@ from filter_utils import (
     punct_word,
     remove_control_chars,
     remove_variation_selectors,
-    separate_emojis_and_text)
+    separate_emojis_and_text,
+    EMOJI_PH)
 from functools import partial
 from nltk.tokenize.casual import TweetTokenizer
 from operator import itemgetter
@@ -149,6 +150,7 @@ class WordGenerator():
             self.tokenizer = get_default_tokenizer(self.lang)
 
         words = self.tokenizer.tokenize(sentence)
+
         if self.norm_unicode_text:
             converted_words = []
             for w in words:
@@ -263,7 +265,32 @@ class WordGenerator():
             self.stats['pretokenization_filtered'] += 1
             return False, [], info
 
-        words = self.get_words(pre_line)
+        pre_line, emojis = extract_emojis(pre_line, self.emojis)
+        # dedupe by tweet
+        info["emojis"] = set(emojis)
+        if EMOJI_PH in pre_line:
+            words = []
+            segments = pre_line.split(EMOJI_PH)
+            for i, segment in enumerate(segments):
+                if segment:
+                    words.extend(self.get_words(segment))
+                # dedupe eol emoji place holder
+                if i != len(segments) - 1:
+                    words.append(EMOJI_PH)
+        else:
+            words = self.get_words(pre_line)
+
+        if emojis:
+            i_emoji = 0
+            words_returned_emoji = []
+            for word in words:
+                if word == EMOJI_PH:
+                    words_returned_emoji.append(emojis[i_emoji])
+                    i_emoji += 1
+                else:
+                    words_returned_emoji.append(word)
+            words = words_returned_emoji
+
         if len(words) == 0:
             self.stats['unicode_filtered'] += 1
             return False, [], info
@@ -371,8 +398,6 @@ class TweetWordGenerator(WordGenerator):
         text = line.strip()
         valid = self.validated_tweet(text)
         if valid:
-            text, emojis = extract_emojis(text, self.emojis)
-
             text = MENTION_RE.sub('', text)
             text = RETWEET_RE.sub('', text)
             text = URLS_RE.sub('', text)
@@ -381,8 +406,7 @@ class TweetWordGenerator(WordGenerator):
             text = text.strip()
         else:
             text = ''
-            emojis = []
-        return valid, text, {'emojis': emojis}
+        return valid, text, {}
 
     def data_postprocess_filtering(self, words, iter_i):
         valid_length = correct_length(words, 1, None)
