@@ -56,6 +56,7 @@ def main(unused_argv):
             os.remove(tmp_output_path.__str__())
         h5f = h5.File(tmp_output_path.__str__())
     else:
+        output_path = embed_dir / (output_prefix + ".npz")
         embed = {}
 
     for i, lang in enumerate((s_lang, t_lang)):
@@ -119,22 +120,18 @@ def main(unused_argv):
                     dataset.resize((j+1, maxlen[lang], depth))
                 dataset[j] = out
         else:
-            #output_X_path = (embed_dir / (output_prefix + "_" + lang + "_X.npy")).__str__()
             encoded_D = []
             for inp in tqdm(D):
                 out = intermediate_layer_model.predict(inp)
                 encoded_D.append(out)
             embed[lang] = encoded_D
-            #np.save(output_X_path, encoded_D)
 
     if FLAGS.h5:
         h5f.create_dataset("label", data=df["label"].values)
         h5f.close()
         os.rename(tmp_output_path.__str__(), output_path.__str__())
     else:
-        #output_y_path = (embed_dir / (output_prefix + "_y.npy")).__str__()
-        np.savez(output_path, s_lang=embed[s_lang], t_lang=embed[t_lang], label=df["label"].values)
-        #np.save(output_y_path, df["label"].values)
+        np.savez(output_path, **embed, label=df["label"].values)
 
 
 if __name__ == "__main__":

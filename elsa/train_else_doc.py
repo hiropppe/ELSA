@@ -1,6 +1,7 @@
 import keras
 import numpy as np
 import tensorflow as tf
+import warnings
 
 from absl import flags
 from keras.utils import Sequence
@@ -14,11 +15,12 @@ from sklearn.metrics import accuracy_score, classification_report, recall_score,
 
 def warn(*args, **kwargs):
     pass
-import warnings
+
+
 warnings.warn = warn
 
 
-flags.DEFINE_string("data", default="./embed/books_train_review",
+flags.DEFINE_string("data", default=None,
                     help="directory contains preprocessed data")
 flags.DEFINE_string("s_lang", default="en", help="lang")
 flags.DEFINE_string("t_lang", default="ja", help="lang")
@@ -41,6 +43,8 @@ flags.DEFINE_float("val_size", default=0.1, help="")
 flags.DEFINE_integer("random_state", default=123, help="")
 
 flags.DEFINE_bool("test", default=False, help="")
+
+flags.mark_flags_as_required(["data"])
 
 FLAGS = flags.FLAGS
 
@@ -110,12 +114,10 @@ def main(unused_argv):
         h5dataset = H5Dataset(FLAGS.data, FLAGS.s_lang, FLAGS.t_lang,
                               FLAGS.batch_size, FLAGS.val_size, FLAGS.random_state)
     else:
-        source_embed_path = FLAGS.data + "_" + FLAGS.s_lang + "_X.npy"
-        target_embed_path = FLAGS.data + "_" + FLAGS.t_lang + "_X.npy"
-        label_path = FLAGS.data + "_y.npy"
+        data = np.load(FLAGS.data)
 
-        source_X = np.load(source_embed_path, allow_pickle=True)
-        target_X = np.load(target_embed_path, allow_pickle=True)
+        source_X = data[FLAGS.s_lang]
+        target_X = data[FLAGS.t_lang]
 
         if FLAGS.pad:
             source_X = tf.keras.preprocessing.sequence.pad_sequences(
@@ -124,7 +126,7 @@ def main(unused_argv):
                 target_X, dtype=np.float32, maxlen=FLAGS.t_maxlen)
 
         X = [source_X, target_X]
-        y = np.load(label_path)
+        y = data["label"]
 
     model = elsa_doc_model(hidden_dim=FLAGS.hidden_dim,
                            dropout=FLAGS.drop,
