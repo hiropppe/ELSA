@@ -12,6 +12,12 @@ from keras.optimizers import Adam
 from sklearn.metrics import accuracy_score, classification_report, recall_score, precision_score, f1_score
 
 
+def warn(*args, **kwargs):
+    pass
+import warnings
+warnings.warn = warn
+
+
 flags.DEFINE_string("data", default="./embed/books_train_review",
                     help="directory contains preprocessed data")
 flags.DEFINE_string("s_lang", default="en", help="lang")
@@ -69,7 +75,7 @@ class H5Dataset():
 
     def __init__(self, h5_path, s_lang, t_lang, batch_size, val_size=0.1, random_state=None):
         import h5py as h5
-        self.data = h5.File(h5_path)
+        self.data = h5.File(h5_path, mode="r", driver="core")
         self.s_lang = s_lang
         self.t_lang = t_lang
         if not random_state:

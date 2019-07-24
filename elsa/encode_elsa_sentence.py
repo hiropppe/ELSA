@@ -52,6 +52,8 @@ def main(unused_argv):
         import h5py as h5
         output_path = embed_dir / (output_prefix + ".hdf5")
         tmp_output_path = embed_dir / (".tmp." + output_prefix + ".hdf5")
+        if tmp_output_path.exists():
+            os.remove(tmp_output_path.__str__())
         h5f = h5.File(tmp_output_path.__str__())
     else:
         embed = {}
