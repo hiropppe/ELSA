@@ -114,7 +114,7 @@ def main(unused_argv):
         h5dataset = H5Dataset(FLAGS.data, FLAGS.s_lang, FLAGS.t_lang,
                               FLAGS.batch_size, FLAGS.val_size, FLAGS.random_state)
     else:
-        data = np.load(FLAGS.data)
+        data = np.load(FLAGS.data, allow_pickle=True)
 
         source_X = data[FLAGS.s_lang]
         target_X = data[FLAGS.t_lang]
