@@ -1,0 +1,130 @@
+FROM ubuntu:16.04
+
+RUN mkdir /root/_INSTALL
+
+WORKDIR /root/_INSTALL
+
+RUN sed -i.bak -e "s%http://archive.ubuntu.com/ubuntu/%http://ftp.jaist.ac.jp/pub/Linux/ubuntu/%g" /etc/apt/sources.list
+
+ENV TZ Asia/Tokyo
+RUN apt-get update \
+  && apt-get install -y tzdata \
+  && rm -rf /var/lib/apt/lists/* \
+  && echo "${TZ}" > /etc/timezone \
+  && rm /etc/localtime \
+  && ln -s /usr/share/zoneinfo/Asia/Tokyo /etc/localtime \
+  && dpkg-reconfigure -f noninteractive tzdata
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        software-properties-common \
+        build-essential \
+        curl \
+        wget \
+        less \
+        tree \
+        vim \
+        git \
+        libfreetype6-dev \
+        libpng12-dev \
+        libzmq3-dev \
+        libboost-dev \
+        libprotobuf9v5 \
+        libtool \
+        cmake \
+        protobuf-compiler \
+        libprotobuf-dev \
+        libgoogle-perftools-dev \
+        pkg-config \
+        python3 \
+        python3-dev \
+        python3-wheel \
+        python3-mock \
+        python3-pip \
+        swig \
+        zip \
+        unzip \
+        p7zip-full \
+        language-pack-ja-base \
+        language-pack-ja \
+        apt-transport-https \
+        xz-utils \
+        file \
+        && \
+        apt-get clean && \
+        rm -rf /var/lib/apt/lists/*
+
+RUN add-apt-repository -y ppa:jonathonf/python-3.6 \
+ && apt-get update \
+ && apt-get install -y python3.6 python3.6-dev \
+ && wget https://bootstrap.pypa.io/get-pip.py \
+ && python3.6 get-pip.py \
+ && ln -fs /usr/bin/python3.6 /usr/bin/python3
+
+RUN pip3 install -U pip
+RUN pip3 install --no-cache-dir -U setuptools
+RUN pip3 --no-cache-dir install \
+        jedi \
+        flake8 \
+        autopep8 \
+        ipykernel \
+        jupyter \
+        pandas==0.25.2 \
+        matplotlib==3.1.1 \
+        click==7.0 \
+        tqdm==4.37.0 \
+        fastprogress==0.1.21 \
+        nltk==3.4.5 \
+        emoji==0.5.4 \
+        text-unidecode==1.3 \
+        stanfordnlp==0.2.0 \
+        scikit-learn==0.21.3 \
+        gensim==3.8.1 \
+        tensorflow==1.14.0 \
+        keras==2.3.1 \
+        neologdn==0.4 \
+        && \
+    python3 -m ipykernel.kernelspec
+
+RUN git clone --depth 1 https://github.com/taku910/mecab && \
+    cd mecab/mecab && \
+    ./configure --enable-utf8-only && \
+    make && \
+    make check && \
+    make install && \
+    pip3 install --no-cache-dir mecab-python3 && \
+    ldconfig && \
+    cd ../mecab-ipadic && \
+    ./configure --with-charset=utf8 && \
+    make && \
+    make install
+
+RUN git clone --depth 1 https://github.com/neologd/mecab-ipadic-neologd.git \
+ && cd mecab-ipadic-neologd \
+ && ./bin/install-mecab-ipadic-neologd -n -a -y
+
+RUN git clone https://github.com/google/sentencepiece.git \
+ && cd sentencepiece \
+ && mkdir build \
+ && cd build \
+ && cmake .. \
+ && make -j $(nproc) \
+ && make install \
+ && ldconfig -v \
+ && cd ../python \
+ && python3 setup.py build \
+ && python3 setup.py install
+
+RUN wget https://fallabs.com/qdbm/qdbm-1.8.78.tar.gz \
+ && tar xzf qdbm-1.8.78.tar.gz \
+ && cd qdbm-1.8.78 \
+ && make \
+ && make check \
+ && make install \
+ && ldconfig \
+ && pip install pyqdbm
+
+RUN echo '# LANG' >> ~/.bashrc \
+ && echo 'export LANG=ja_JP.UTF-8' >> ~/.bashrc
+
+WORKDIR /root
