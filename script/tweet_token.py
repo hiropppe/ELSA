@@ -8,18 +8,18 @@ from word_generator import TweetWordGenerator
 
 
 @click.command()
-@click.argument("input_path")
 @click.argument("data_dir")
 @click.argument("lang")
 @click.option("--processes", "-w", default=os.cpu_count()-1, help="")
-def main(input_path, data_dir, lang, processes):
+def main(data_dir, lang, processes):
     data_dir = Path(data_dir)
+    tweet_input = (data_dir / '{:s}_tweet.txt'.format(lang)).__str__()
     token_output = (data_dir / '{:s}_tokens.txt'.format(lang)).__str__()
     emoji_output = (data_dir / '{:s}_emoji.txt'.format(lang)).__str__()
 
-    emoji_wanted = json.loads(open("./emoji_unicode", "r").read()).keys()
+    emoji_wanted = json.loads(open(os.path.dirname(__file__) + "/emoji_unicode", "r").read()).keys()
 
-    wg = TweetWordGenerator(input_path,
+    wg = TweetWordGenerator(tweet_input,
                             lang,
                             emojis=emoji_wanted,
                             processes=processes)
