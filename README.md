@@ -1,7 +1,6 @@
 # ELSA
 
-The Code is based on the official code of ELSA but with some fixes.
-https://github.com/sIncerass/ELSA
+The Code is based on the official code of [ELSA](https://github.com/sIncerass/ELSA) but with some fixes.
 
 ELSA is an emoji-powered representation learning framework for cross-lingual sentiment classification. 
 
