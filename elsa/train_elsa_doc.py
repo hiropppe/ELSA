@@ -167,8 +167,7 @@ def main(unused_argv):
     else:
         if h5dataset:
             X, y = h5dataset.get_all_data()
-
-        model.load_weights(filepath=checkpoint_weight_path)
+        model.load_weights(checkpoint_weight_path)
         predict_total = model.predict(X, batch_size=FLAGS.batch_size)
         predict_total = [int(x > 0.5) for x in predict_total]
         acc = accuracy_score(predict_total, y)
